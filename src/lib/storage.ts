@@ -1,5 +1,5 @@
 import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
-import { DEFAULT_SETTINGS } from './settings';
+import { resolveSettings } from './settings';
 
 const KEYS = {
   rackets: 'tennis-tracker:rackets',
@@ -40,11 +40,11 @@ export const practiceStorage = {
 export const settingsStorage = {
   get: (): RestringSettings => {
     const raw = localStorage.getItem(KEYS.settings);
-    if (!raw) return DEFAULT_SETTINGS;
+    if (!raw) return resolveSettings(null);
     try {
-      return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<RestringSettings>) };
+      return resolveSettings(JSON.parse(raw) as Partial<RestringSettings>);
     } catch {
-      return DEFAULT_SETTINGS;
+      return resolveSettings(null);
     }
   },
   save: (settings: RestringSettings) => localStorage.setItem(KEYS.settings, JSON.stringify(settings)),

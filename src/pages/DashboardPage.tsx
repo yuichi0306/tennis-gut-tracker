@@ -45,12 +45,16 @@ export default function DashboardPage() {
               {info.latestStringing ? (
                 <div className="mt-2 text-sm">
                   <p>
-                    最終張り替え: {info.latestStringing.date}（{info.daysSinceStringing}日経過）
+                    最終張り替え: {info.latestStringing.date}（{info.daysSinceStringing}日経過
+                    {info.threshold && ` / 基準${info.threshold.days}日`}）
                   </p>
                   <p>
-                    {info.latestStringing.gutName} / メイン {info.latestStringing.mainTension}lbs・クロス {info.latestStringing.crossTension}lbs
+                    {info.latestStringing.gutName}（{info.latestStringing.gutType}） / メイン {info.latestStringing.mainTension}lbs・クロス {info.latestStringing.crossTension}lbs
                   </p>
-                  <p>張り替え後の使用時間: 約{info.hoursPlayedSinceStringing.toFixed(1)}時間</p>
+                  <p>
+                    張り替え後の使用時間: 約{info.hoursPlayedSinceStringing.toFixed(1)}時間
+                    {info.threshold && ` / 基準${info.threshold.hours}時間`}
+                  </p>
                 </div>
               ) : (
                 <p className="mt-2 text-sm">
@@ -64,8 +68,8 @@ export default function DashboardPage() {
         })}
       </ul>
       <p className="text-xs text-gray-400">
-        目安: 張り替えから{settings.warningDays}日でそろそろ、{settings.overdueDays}日で張り替え推奨として表示しています。
-        タイミングは<Link to="/settings" className="underline">設定</Link>で変更できます。
+        目安: ガット種類ごとの使用時間・経過日数の基準に達すると「張り替え推奨」、その80%で「そろそろ」と表示します。
+        基準は<Link to="/settings" className="underline">設定</Link>で変更できます。
       </p>
     </div>
   );

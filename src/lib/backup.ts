@@ -1,5 +1,6 @@
 import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
 import { racketStorage, stringingStorage, practiceStorage, settingsStorage } from './storage';
+import { resolveSettings } from './settings';
 
 export interface BackupData {
   app: 'tennis-gut-tracker';
@@ -78,10 +79,9 @@ export function importBackup(jsonText: string): ImportResult {
   stringingStorage.save(stringingRecords);
   practiceStorage.save(practiceSessions);
 
-  // 設定は任意項目。含まれていれば数値の妥当性を確認して取り込む
-  const s = obj.settings;
-  if (s && typeof s.warningDays === 'number' && typeof s.overdueDays === 'number' && s.warningDays >= 1 && s.overdueDays > s.warningDays) {
-    settingsStorage.save({ frequency: s.frequency ?? 'custom', warningDays: s.warningDays, overdueDays: s.overdueDays });
+  // 設定は任意項目。含まれていれば正規化して取り込む（不正値は既定値で補完）
+  if (obj.settings && typeof obj.settings === 'object') {
+    settingsStorage.save(resolveSettings(obj.settings));
   }
 
   return {

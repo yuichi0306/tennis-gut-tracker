@@ -1,5 +1,5 @@
-import type { PracticeSession, StringingRecord, RestringSettings } from '../types';
-import { DEFAULT_SETTINGS } from './settings';
+import type { PracticeSession, StringingRecord, RestringSettings, GutThreshold } from '../types';
+import { DEFAULT_SETTINGS, WARNING_RATIO } from './settings';
 
 export type RestringStatus = 'no-record' | 'ok' | 'warning' | 'overdue';
 
@@ -8,6 +8,7 @@ export interface RestringInfo {
   hoursPlayedSinceStringing: number;
   daysSinceStringing: number | null;
   status: RestringStatus;
+  threshold: GutThreshold | null; // 適用したガット種類別の基準
 }
 
 export function getRestringInfo(
@@ -27,6 +28,7 @@ export function getRestringInfo(
       hoursPlayedSinceStringing: 0,
       daysSinceStringing: null,
       status: 'no-record',
+      threshold: null,
     };
   }
 
@@ -39,13 +41,15 @@ export function getRestringInfo(
     (Date.now() - new Date(latestStringing.date).getTime()) / (1000 * 60 * 60 * 24),
   );
 
-  // 判定は経過日数で行う（使用時間は参考表示）
+  // 判定はガット種類ごとの基準で行う。使用時間または経過日数のどちらかが
+  // 基準に達したら「推奨」、基準の80%に達したら「そろそろ」。
+  const th = settings.thresholds[latestStringing.gutType] ?? DEFAULT_SETTINGS.thresholds[latestStringing.gutType];
   let status: RestringStatus = 'ok';
-  if (daysSinceStringing >= settings.overdueDays) {
+  if (hoursPlayedSinceStringing >= th.hours || daysSinceStringing >= th.days) {
     status = 'overdue';
-  } else if (daysSinceStringing >= settings.warningDays) {
+  } else if (hoursPlayedSinceStringing >= th.hours * WARNING_RATIO || daysSinceStringing >= th.days * WARNING_RATIO) {
     status = 'warning';
   }
 
-  return { latestStringing, hoursPlayedSinceStringing, daysSinceStringing, status };
+  return { latestStringing, hoursPlayedSinceStringing, daysSinceStringing, status, threshold: th };
 }

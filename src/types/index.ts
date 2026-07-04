@@ -30,12 +30,13 @@ export interface PracticeSession {
   notes: string;
 }
 
-// プレイ頻度（張り替え推奨タイミングのプリセット）
-export type PlayFrequency = 'light' | 'standard' | 'heavy' | 'custom';
+// ガット種類ごとの張り替え推奨ライン（overdue）。判定は使用時間または経過日数で行う。
+export interface GutThreshold {
+  hours: number; // 使用時間の推奨ライン
+  days: number; // 経過日数の推奨ライン
+}
 
-// 張り替え推奨の設定。判定は経過日数で行う。
+// 張り替え推奨の設定。ガット種類ごとに基準を持ち、「そろそろ」は推奨の80%で判定する。
 export interface RestringSettings {
-  frequency: PlayFrequency;
-  warningDays: number; // これを超えると「そろそろ」
-  overdueDays: number; // これを超えると「推奨」
+  thresholds: Record<GutType, GutThreshold>;
 }
