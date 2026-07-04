@@ -29,3 +29,13 @@ export interface PracticeSession {
   durationMinutes: number;
   notes: string;
 }
+
+// プレイ頻度（張り替え推奨タイミングのプリセット）
+export type PlayFrequency = 'light' | 'standard' | 'heavy' | 'custom';
+
+// 張り替え推奨の設定。判定は経過日数で行う。
+export interface RestringSettings {
+  frequency: PlayFrequency;
+  warningDays: number; // これを超えると「そろそろ」
+  overdueDays: number; // これを超えると「推奨」
+}

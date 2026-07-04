@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useRackets } from '../hooks/useRackets';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
+import { useSettings } from '../hooks/useSettings';
 import { getRestringInfo, type RestringStatus } from '../lib/restring';
 
 const statusStyles: Record<RestringStatus, { label: string; className: string }> = {
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const { rackets } = useRackets();
   const { records } = useStringingRecords();
   const { sessions } = usePracticeSessions();
+  const { settings } = useSettings();
 
   if (rackets.length === 0) {
     return (
@@ -32,7 +34,7 @@ export default function DashboardPage() {
       <h2 className="text-xl font-bold">張り替え時期の状況</h2>
       <ul className="space-y-3">
         {rackets.map((racket) => {
-          const info = getRestringInfo(racket.id, records, sessions);
+          const info = getRestringInfo(racket.id, records, sessions, settings);
           const style = statusStyles[info.status];
           return (
             <li key={racket.id} className={`rounded border p-4 ${style.className}`}>
@@ -62,7 +64,8 @@ export default function DashboardPage() {
         })}
       </ul>
       <p className="text-xs text-gray-400">
-        目安: 使用時間20時間または90日でそろそろ、30時間または120日で張り替え推奨として表示しています。
+        目安: 張り替えから{settings.warningDays}日でそろそろ、{settings.overdueDays}日で張り替え推奨として表示しています。
+        タイミングは<Link to="/settings" className="underline">設定</Link>で変更できます。
       </p>
     </div>
   );

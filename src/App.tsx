@@ -5,6 +5,7 @@ import StringingPage from './pages/StringingPage';
 import PracticePage from './pages/PracticePage';
 import StatsPage from './pages/StatsPage';
 import DataPage from './pages/DataPage';
+import SettingsPage from './pages/SettingsPage';
 
 const navItems = [
   { to: '/', label: 'ダッシュボード', end: true },
@@ -13,6 +14,7 @@ const navItems = [
   { to: '/practice', label: '練習記録' },
   { to: '/stats', label: '統計' },
   { to: '/data', label: 'データ' },
+  { to: '/settings', label: '設定' },
 ];
 
 function App() {
@@ -47,6 +49,7 @@ function App() {
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/data" element={<DataPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
     </div>

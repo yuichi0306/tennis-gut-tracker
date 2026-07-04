@@ -1,4 +1,5 @@
-import type { PracticeSession, StringingRecord } from '../types';
+import type { PracticeSession, StringingRecord, RestringSettings } from '../types';
+import { DEFAULT_SETTINGS } from './settings';
 
 export type RestringStatus = 'no-record' | 'ok' | 'warning' | 'overdue';
 
@@ -9,16 +10,11 @@ export interface RestringInfo {
   status: RestringStatus;
 }
 
-// 一般的な目安: 20時間でそろそろ、30時間で張り替え推奨。日数は90日/120日を上限の目安とする。
-const HOURS_WARNING = 20;
-const HOURS_OVERDUE = 30;
-const DAYS_WARNING = 90;
-const DAYS_OVERDUE = 120;
-
 export function getRestringInfo(
   racketId: string,
   stringingRecords: StringingRecord[],
   practiceSessions: PracticeSession[],
+  settings: RestringSettings = DEFAULT_SETTINGS,
 ): RestringInfo {
   const recordsForRacket = stringingRecords
     .filter((r) => r.racketId === racketId)
@@ -43,10 +39,11 @@ export function getRestringInfo(
     (Date.now() - new Date(latestStringing.date).getTime()) / (1000 * 60 * 60 * 24),
   );
 
+  // 判定は経過日数で行う（使用時間は参考表示）
   let status: RestringStatus = 'ok';
-  if (hoursPlayedSinceStringing >= HOURS_OVERDUE || daysSinceStringing >= DAYS_OVERDUE) {
+  if (daysSinceStringing >= settings.overdueDays) {
     status = 'overdue';
-  } else if (hoursPlayedSinceStringing >= HOURS_WARNING || daysSinceStringing >= DAYS_WARNING) {
+  } else if (daysSinceStringing >= settings.warningDays) {
     status = 'warning';
   }
 

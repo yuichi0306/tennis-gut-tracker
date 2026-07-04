@@ -1,5 +1,5 @@
-import type { Racket, StringingRecord, PracticeSession } from '../types';
-import { racketStorage, stringingStorage, practiceStorage } from './storage';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
+import { racketStorage, stringingStorage, practiceStorage, settingsStorage } from './storage';
 
 export interface BackupData {
   app: 'tennis-gut-tracker';
@@ -8,6 +8,7 @@ export interface BackupData {
   rackets: Racket[];
   stringingRecords: StringingRecord[];
   practiceSessions: PracticeSession[];
+  settings?: RestringSettings;
 }
 
 // 現在の全データをバックアップ用オブジェクトにまとめる
@@ -19,6 +20,7 @@ export function buildBackup(): BackupData {
     rackets: racketStorage.getAll(),
     stringingRecords: stringingStorage.getAll(),
     practiceSessions: practiceStorage.getAll(),
+    settings: settingsStorage.get(),
   };
 }
 
@@ -75,6 +77,12 @@ export function importBackup(jsonText: string): ImportResult {
   racketStorage.save(rackets);
   stringingStorage.save(stringingRecords);
   practiceStorage.save(practiceSessions);
+
+  // 設定は任意項目。含まれていれば数値の妥当性を確認して取り込む
+  const s = obj.settings;
+  if (s && typeof s.warningDays === 'number' && typeof s.overdueDays === 'number' && s.warningDays >= 1 && s.overdueDays > s.warningDays) {
+    settingsStorage.save({ frequency: s.frequency ?? 'custom', warningDays: s.warningDays, overdueDays: s.overdueDays });
+  }
 
   return {
     rackets: rackets.length,
