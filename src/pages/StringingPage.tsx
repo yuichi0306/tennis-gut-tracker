@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import type { GutType } from '../types';
+import type { StringingRecord } from '../types';
 
 const gutTypes: GutType[] = ['ポリエステル', 'ナイロン（合成繊維）', 'ナチュラル', 'ハイブリッド'];
 
@@ -11,8 +12,9 @@ function todayISO() {
 
 export default function StringingPage() {
   const { rackets } = useRackets();
-  const { records, addRecord, deleteRecord } = useStringingRecords();
+  const { records, addRecord, updateRecord, deleteRecord } = useStringingRecords();
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [racketId, setRacketId] = useState('');
   const [date, setDate] = useState(todayISO());
   const [gutName, setGutName] = useState('');
@@ -24,10 +26,35 @@ export default function StringingPage() {
 
   const racketName = (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
 
-  function handleAdd(e: React.FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setRacketId('');
+    setDate(todayISO());
+    setGutName('');
+    setGutType('ポリエステル');
+    setMainTension('50');
+    setCrossTension('50');
+    setShop('');
+    setNotes('');
+  }
+
+  function startEdit(r: StringingRecord) {
+    setEditingId(r.id);
+    setRacketId(r.racketId);
+    setDate(r.date);
+    setGutName(r.gutName);
+    setGutType(r.gutType);
+    setMainTension(String(r.mainTension));
+    setCrossTension(String(r.crossTension));
+    setShop(r.shop);
+    setNotes(r.notes);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!racketId || !gutName.trim()) return;
-    addRecord({
+    const payload = {
       racketId,
       date,
       gutName: gutName.trim(),
@@ -36,10 +63,13 @@ export default function StringingPage() {
       crossTension: Number(crossTension),
       shop: shop.trim(),
       notes: notes.trim(),
-    });
-    setGutName('');
-    setShop('');
-    setNotes('');
+    };
+    if (editingId) {
+      updateRecord(editingId, payload);
+    } else {
+      addRecord(payload);
+    }
+    resetForm();
   }
 
   const sortedRecords = [...records].sort((a, b) => b.date.localeCompare(a.date));
@@ -47,11 +77,11 @@ export default function StringingPage() {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="mb-2 text-xl font-bold">ガット張り替えを記録</h2>
+        <h2 className="mb-2 text-xl font-bold">{editingId ? 'ガット張り替えを編集' : 'ガット張り替えを記録'}</h2>
         {rackets.length === 0 ? (
           <p className="text-sm text-gray-500">先に「ラケット」タブでラケットを登録してください。</p>
         ) : (
-          <form onSubmit={handleAdd} className="grid grid-cols-1 gap-3 rounded border border-gray-200 bg-white p-4 sm:grid-cols-2">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded border border-gray-200 bg-white p-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               ラケット
               <select value={racketId} onChange={(e) => setRacketId(e.target.value)} className="rounded border border-gray-300 px-2 py-1.5" required>
@@ -93,10 +123,15 @@ export default function StringingPage() {
               メモ
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="rounded border border-gray-300 px-2 py-1.5" />
             </label>
-            <div className="sm:col-span-2">
+            <div className="flex gap-2 sm:col-span-2">
               <button type="submit" className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">
-                記録する
+                {editingId ? '更新する' : '記録する'}
               </button>
+              {editingId && (
+                <button type="button" onClick={resetForm} className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+                  キャンセル
+                </button>
+              )}
             </div>
           </form>
         )}
@@ -117,9 +152,14 @@ export default function StringingPage() {
                     {r.shop && <p className="text-gray-500">張り場所: {r.shop}</p>}
                     {r.notes && <p className="text-gray-500">メモ: {r.notes}</p>}
                   </div>
-                  <button onClick={() => deleteRecord(r.id)} className="shrink-0 text-red-600 hover:underline">
-                    削除
-                  </button>
+                  <div className="flex shrink-0 gap-2">
+                    <button onClick={() => startEdit(r)} className="text-emerald-700 hover:underline">
+                      編集
+                    </button>
+                    <button onClick={() => deleteRecord(r.id)} className="text-red-600 hover:underline">
+                      削除
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}

@@ -18,11 +18,17 @@ export function useStringingRecords() {
     return newRecord;
   }
 
+  function updateRecord(id: string, record: Omit<StringingRecord, 'id'>) {
+    const next = records.map((r) => (r.id === id ? { ...record, id } : r));
+    setRecords(next);
+    stringingStorage.save(next);
+  }
+
   function deleteRecord(id: string) {
     const next = records.filter((r) => r.id !== id);
     setRecords(next);
     stringingStorage.save(next);
   }
 
-  return { records, addRecord, deleteRecord };
+  return { records, addRecord, updateRecord, deleteRecord };
 }

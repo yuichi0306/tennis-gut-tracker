@@ -18,11 +18,17 @@ export function usePracticeSessions() {
     return newSession;
   }
 
+  function updateSession(id: string, session: Omit<PracticeSession, 'id'>) {
+    const next = sessions.map((s) => (s.id === id ? { ...session, id } : s));
+    setSessions(next);
+    practiceStorage.save(next);
+  }
+
   function deleteSession(id: string) {
     const next = sessions.filter((s) => s.id !== id);
     setSessions(next);
     practiceStorage.save(next);
   }
 
-  return { sessions, addSession, deleteSession };
+  return { sessions, addSession, updateSession, deleteSession };
 }
