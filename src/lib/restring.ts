@@ -1,5 +1,6 @@
 import type { PracticeSession, StringingRecord, RestringSettings, GutThreshold } from '../types';
-import { DEFAULT_SETTINGS, WARNING_RATIO } from './settings';
+import { DEFAULT_SETTINGS, DEFAULT_THRESHOLDS, WARNING_RATIO } from './settings';
+import { parseISODateLocal } from './date';
 
 export type RestringStatus = 'no-record' | 'ok' | 'warning' | 'overdue';
 
@@ -37,13 +38,18 @@ export function getRestringInfo(
     .reduce((sum, s) => sum + s.durationMinutes, 0);
   const hoursPlayedSinceStringing = minutesPlayed / 60;
 
+  // 張り替え日はローカルタイムゾーンの0時として扱う（UTC解釈だと日本では9時間ズレる）
   const daysSinceStringing = Math.floor(
-    (Date.now() - new Date(latestStringing.date).getTime()) / (1000 * 60 * 60 * 24),
+    (Date.now() - parseISODateLocal(latestStringing.date).getTime()) / (1000 * 60 * 60 * 24),
   );
 
   // 判定はガット種類ごとの基準で行う。使用時間または経過日数のどちらかが
   // 基準に達したら「推奨」、基準の80%に達したら「そろそろ」。
-  const th = settings.thresholds[latestStringing.gutType] ?? DEFAULT_SETTINGS.thresholds[latestStringing.gutType];
+  // gutType が不正（インポートした壊れたデータ等）でも落ちないよう、ナイロンの既定値へフォールバック。
+  const th =
+    settings.thresholds[latestStringing.gutType] ??
+    DEFAULT_SETTINGS.thresholds[latestStringing.gutType] ??
+    DEFAULT_THRESHOLDS['ナイロン（合成繊維）'];
   let status: RestringStatus = 'ok';
   if (hoursPlayedSinceStringing >= th.hours || daysSinceStringing >= th.days) {
     status = 'overdue';

@@ -3,12 +3,9 @@ import { useRackets } from '../hooks/useRackets';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import type { GutType } from '../types';
 import type { StringingRecord } from '../types';
+import { todayISO } from '../lib/date';
 
 const gutTypes: GutType[] = ['ポリエステル', 'ナイロン（合成繊維）', 'ナチュラル', 'ハイブリッド'];
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function StringingPage() {
   const { rackets } = useRackets();

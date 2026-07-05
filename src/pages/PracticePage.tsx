@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import type { PracticeSession } from '../types';
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayISO } from '../lib/date';
 
 export default function PracticePage() {
   const { rackets } = useRackets();
