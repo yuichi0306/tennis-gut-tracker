@@ -4,6 +4,7 @@ import { useStringingRecords } from '../hooks/useStringingRecords';
 import type { GutType } from '../types';
 import type { StringingRecord } from '../types';
 import { todayISO } from '../lib/date';
+import StarRating from '../components/StarRating';
 
 const gutTypes: GutType[] = ['ポリエステル', 'ナイロン（合成繊維）', 'ナチュラル', 'ハイブリッド'];
 
@@ -19,6 +20,7 @@ export default function StringingPage() {
   const [mainTension, setMainTension] = useState('50');
   const [crossTension, setCrossTension] = useState('50');
   const [shop, setShop] = useState('');
+  const [rating, setRating] = useState(0);
   const [notes, setNotes] = useState('');
 
   const racketName = (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
@@ -32,6 +34,7 @@ export default function StringingPage() {
     setMainTension('50');
     setCrossTension('50');
     setShop('');
+    setRating(0);
     setNotes('');
   }
 
@@ -44,6 +47,7 @@ export default function StringingPage() {
     setMainTension(String(r.mainTension));
     setCrossTension(String(r.crossTension));
     setShop(r.shop);
+    setRating(r.rating ?? 0);
     setNotes(r.notes);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -59,6 +63,7 @@ export default function StringingPage() {
       mainTension: Number(mainTension),
       crossTension: Number(crossTension),
       shop: shop.trim(),
+      rating,
       notes: notes.trim(),
     };
     if (editingId) {
@@ -116,6 +121,17 @@ export default function StringingPage() {
               張った場所
               <input type="text" value={shop} onChange={(e) => setShop(e.target.value)} placeholder="例: 自分で張った / ○○テニスショップ" className="rounded border border-gray-300 px-2 py-1.5" />
             </label>
+            <div className="flex flex-col gap-1 text-sm">
+              打感（★評価）
+              <div className="flex h-[38px] items-center gap-2">
+                <StarRating value={rating} onChange={setRating} />
+                {rating > 0 && (
+                  <button type="button" onClick={() => setRating(0)} className="text-xs text-gray-400 hover:underline">
+                    クリア
+                  </button>
+                )}
+              </div>
+            </div>
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
               メモ
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="rounded border border-gray-300 px-2 py-1.5" />
@@ -146,6 +162,11 @@ export default function StringingPage() {
                   <div>
                     <p className="font-semibold">{r.date} - {racketName(r.racketId)}</p>
                     <p>{r.gutName}（{r.gutType}） / メイン {r.mainTension}lbs・クロス {r.crossTension}lbs</p>
+                    {r.rating ? (
+                      <p className="flex items-center gap-1 text-gray-500">
+                        打感: <StarRating value={r.rating} size="sm" />
+                      </p>
+                    ) : null}
                     {r.shop && <p className="text-gray-500">張り場所: {r.shop}</p>}
                     {r.notes && <p className="text-gray-500">メモ: {r.notes}</p>}
                   </div>

@@ -41,21 +41,33 @@ export interface GutUsage {
   gutName: string;
   count: number; // 張り替え回数
   minutes: number; // そのガットで練習した合計時間（分）
+  avgRating: number | null; // 打感の平均★（評価済みがなければ null）
 }
 
 // ガット別の使用傾向を集計する。
 // 各ラケットの張り替え記録を時系列に並べ、次の張り替えまでの期間の練習時間を
-// そのガットの使用時間として積み上げる。
+// そのガットの使用時間として積み上げる。打感の平均★も算出する。
 export function gutUsage(
   stringingRecords: StringingRecord[],
   practiceSessions: PracticeSession[],
 ): GutUsage[] {
-  const byGut = new Map<string, GutUsage>();
+  interface Acc {
+    gutName: string;
+    count: number;
+    minutes: number;
+    ratingSum: number;
+    ratedCount: number;
+  }
+  const byGut = new Map<string, Acc>();
 
-  const add = (gutName: string, count: number, minutes: number) => {
-    const cur = byGut.get(gutName) ?? { gutName, count: 0, minutes: 0 };
-    cur.count += count;
+  const add = (gutName: string, minutes: number, rating: number | undefined) => {
+    const cur = byGut.get(gutName) ?? { gutName, count: 0, minutes: 0, ratingSum: 0, ratedCount: 0 };
+    cur.count += 1;
     cur.minutes += minutes;
+    if (typeof rating === 'number' && rating > 0) {
+      cur.ratingSum += rating;
+      cur.ratedCount += 1;
+    }
     byGut.set(gutName, cur);
   };
 
@@ -73,11 +85,18 @@ export function gutUsage(
       const minutes = practices
         .filter((s) => s.date >= start && (end === undefined || s.date < end))
         .reduce((sum, s) => sum + s.durationMinutes, 0);
-      add(rec.gutName, 1, minutes);
+      add(rec.gutName, minutes, rec.rating);
     });
   }
 
-  return [...byGut.values()].sort((a, b) => b.minutes - a.minutes || b.count - a.count);
+  return [...byGut.values()]
+    .map(({ gutName, count, minutes, ratingSum, ratedCount }) => ({
+      gutName,
+      count,
+      minutes,
+      avgRating: ratedCount > 0 ? ratingSum / ratedCount : null,
+    }))
+    .sort((a, b) => b.minutes - a.minutes || b.count - a.count);
 }
 
 // 分を「◯時間◯分」形式にする

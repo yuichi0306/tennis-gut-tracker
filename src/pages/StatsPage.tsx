@@ -75,7 +75,11 @@ function MonthlyChart({ data }: { data: { month: string; minutes: number }[] }) 
   );
 }
 
-function GutUsageChart({ data }: { data: { gutName: string; count: number; minutes: number }[] }) {
+function GutUsageChart({
+  data,
+}: {
+  data: { gutName: string; count: number; minutes: number; avgRating: number | null }[];
+}) {
   const maxMinutes = Math.max(...data.map((d) => d.minutes), 1);
 
   return (
@@ -85,7 +89,14 @@ function GutUsageChart({ data }: { data: { gutName: string; count: number; minut
         return (
           <li key={d.gutName}>
             <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-              <span className="font-medium">{d.gutName}</span>
+              <span className="font-medium">
+                {d.gutName}
+                {d.avgRating !== null && (
+                  <span className="ml-2 text-xs font-normal text-amber-500">
+                    ★{d.avgRating.toFixed(1)}
+                  </span>
+                )}
+              </span>
               <span className="shrink-0 text-gray-500">
                 {formatMinutes(d.minutes)}・{d.count}回
               </span>

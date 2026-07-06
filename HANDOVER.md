@@ -92,7 +92,7 @@ public/
 
 ```ts
 Racket           { id, name, createdAt }
-StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, notes }
+StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, rating?, notes }  // rating=打感★1〜5（任意）
 PracticeSession  { id, racketId, date, durationMinutes, notes }
 GutType          'ポリエステル' | 'ナイロン（合成繊維）' | 'ナチュラル' | 'ハイブリッド'
 RestringSettings { thresholds: Record<GutType, { hours, days }> }

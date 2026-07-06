@@ -18,6 +18,7 @@ export interface StringingRecord {
   mainTension: number; // タテ糸テンション(lbs)
   crossTension: number; // ヨコ糸テンション(lbs)
   shop: string; // 張った場所（自分/ショップ名）
+  rating?: number; // 打感の評価（★1〜5、未評価は 0 または未設定）
   notes: string;
 }
 
