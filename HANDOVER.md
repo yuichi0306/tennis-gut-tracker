@@ -149,6 +149,14 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 
 ---
 
+## 6.6 張り替え時期の通知
+
+- サーバー不要の「開いた時に知らせる」方式（無料構成のため。バックグラウンドpushは未対応）。
+- `src/lib/notify.ts`（ブラウザ通知・`navigator.setAppBadge`）、`src/hooks/useRestringSummary.ts`（全ラケットの overdue/warning 集計）。
+- ダッシュボードに要張り替えサマリーと「通知をオンにする」ボタン、ナビの「ダッシュボード」タブに推奨本数バッジ、`App.tsx` で起動時に一度だけ通知＋PWAアイコンにバッジ。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。

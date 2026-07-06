@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRackets } from '../hooks/useRackets';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import { useSettings } from '../hooks/useSettings';
+import { useRestringSummary } from '../hooks/useRestringSummary';
 import { getRestringInfo, type RestringStatus } from '../lib/restring';
+import { canNotify, notifyPermission, requestNotifyPermission } from '../lib/notify';
 
 const statusStyles: Record<RestringStatus, { label: string; className: string }> = {
   'no-record': { label: '張り替え記録なし', className: 'bg-gray-100 text-gray-600 border-gray-300' },
@@ -17,6 +20,13 @@ export default function DashboardPage() {
   const { records } = useStringingRecords();
   const { sessions } = usePracticeSessions();
   const { settings } = useSettings();
+  const summary = useRestringSummary();
+  const [permission, setPermission] = useState<NotificationPermission>(notifyPermission());
+
+  async function enableNotifications() {
+    const result = await requestNotifyPermission();
+    setPermission(result);
+  }
 
   if (rackets.length === 0) {
     return (
@@ -32,6 +42,39 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">張り替え時期の状況</h2>
+
+      {(summary.overdue > 0 || summary.warning > 0) && (
+        <div className="rounded border border-gray-200 bg-white p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {summary.overdue > 0 && (
+              <span className="font-semibold text-red-700">🔴 張り替え推奨 {summary.overdue}本</span>
+            )}
+            {summary.warning > 0 && (
+              <span className="font-semibold text-amber-700">🟡 そろそろ {summary.warning}本</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {canNotify() && permission === 'default' && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm">
+          <span className="text-emerald-800">
+            通知をオンにすると、アプリを開いたときに張り替え時期をお知らせします。
+          </span>
+          <button
+            onClick={enableNotifications}
+            className="shrink-0 rounded bg-emerald-700 px-3 py-1.5 font-medium text-white hover:bg-emerald-800"
+          >
+            通知をオンにする
+          </button>
+        </div>
+      )}
+      {canNotify() && permission === 'denied' && (
+        <p className="text-xs text-gray-400">
+          通知はブラウザ側でブロックされています。お知らせを受け取るにはブラウザの設定で許可してください。
+        </p>
+      )}
+
       <ul className="space-y-3">
         {rackets.map((racket) => {
           const info = getRestringInfo(racket.id, records, sessions, settings);

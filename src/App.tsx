@@ -1,4 +1,7 @@
+import { useEffect, useRef } from 'react';
 import { NavLink, Route, Routes } from 'react-router-dom';
+import { useRestringSummary } from './hooks/useRestringSummary';
+import { setAppBadge, notifyRestring, notifyPermission } from './lib/notify';
 import DashboardPage from './pages/DashboardPage';
 import RacketsPage from './pages/RacketsPage';
 import StringingPage from './pages/StringingPage';
@@ -19,6 +22,22 @@ const navItems = [
 ];
 
 function App() {
+  const summary = useRestringSummary();
+  const notifiedRef = useRef(false);
+
+  // PWAアイコンのバッジを張り替え推奨の本数に同期
+  useEffect(() => {
+    setAppBadge(summary.overdue);
+  }, [summary.overdue]);
+
+  // アプリを開いたとき、張り替え推奨があれば一度だけ通知
+  useEffect(() => {
+    if (!notifiedRef.current && summary.overdue > 0 && notifyPermission() === 'granted') {
+      notifyRestring(summary.overdue, summary.overdueNames);
+      notifiedRef.current = true;
+    }
+  }, [summary.overdue, summary.overdueNames]);
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="bg-emerald-700 text-white shadow">
@@ -27,20 +46,28 @@ function App() {
           <AuthBar />
         </div>
         <nav className="mx-auto flex max-w-4xl gap-1 px-2 overflow-x-auto">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `whitespace-nowrap rounded-t-md px-3 py-2 text-sm font-medium ${
-                  isActive ? 'bg-gray-50 text-emerald-800' : 'text-emerald-100 hover:bg-emerald-600'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const badge = item.to === '/' ? summary.overdue : 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `relative whitespace-nowrap rounded-t-md px-3 py-2 text-sm font-medium ${
+                    isActive ? 'bg-gray-50 text-emerald-800' : 'text-emerald-100 hover:bg-emerald-600'
+                  }`
+                }
+              >
+                {item.label}
+                {badge > 0 && (
+                  <span className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                    {badge}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-6">
