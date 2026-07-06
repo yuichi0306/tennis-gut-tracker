@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { readCloud, writeCloud, subscribeCloud, type CloudData } from '../lib/cloud';
-import { racketStorage, stringingStorage, practiceStorage, settingsStorage } from '../lib/storage';
+import { racketStorage, stringingStorage, practiceStorage, settingsStorage, syncMeta } from '../lib/storage';
 import { DEFAULT_SETTINGS } from '../lib/settings';
 import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
 
@@ -53,6 +53,26 @@ function mergeLocalAndCloud(local: LocalData, cloud: LocalData): LocalData {
     // 設定はクラウド側を優先（無ければローカル）
     settings: cloud.settings ?? local.settings,
   };
+}
+
+const EMPTY_DATA: LocalData = {
+  rackets: [],
+  stringingRecords: [],
+  practiceSessions: [],
+  settings: DEFAULT_SETTINGS,
+};
+
+// ログイン時にローカルとクラウドをどう統合するかを決める。
+// - 復元直後(pendingReplace)      : ローカル(=バックアップ)で完全に置き換える
+// - 持ち主が未設定/同一アカウント : 取りこぼし防止のため結合（＝ローカルをクラウドへ吸い上げ）
+// - 別アカウントのローカルデータ   : 引き継がず、クラウド側を採用する
+function resolveOnLogin(local: LocalData, cloud: LocalData | null, uid: string): LocalData {
+  if (syncMeta.isPendingReplace()) return local;
+  const owner = syncMeta.getOwner();
+  if (owner === null || owner === uid) {
+    return cloud ? mergeLocalAndCloud(local, cloud) : local;
+  }
+  return cloud ?? EMPTY_DATA;
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -123,10 +143,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try {
         const cloud = await readCloud(user.uid);
         const local = dataRef.current;
-        const merged = cloud ? mergeLocalAndCloud(local, cloud) : local;
+        const merged = resolveOnLogin(local, cloud, user.uid);
         if (cancelled) return;
         applyData(merged);
         await writeCloud(user.uid, merged); // 統合結果をクラウドへ反映
+        syncMeta.setOwner(user.uid); // このローカルデータの持ち主を記録
+        syncMeta.clearPendingReplace();
       } catch (e) {
         console.error('初回同期に失敗:', e);
       } finally {

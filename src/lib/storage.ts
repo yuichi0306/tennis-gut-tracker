@@ -6,6 +6,8 @@ const KEYS = {
   stringingRecords: 'tennis-tracker:stringing-records',
   practiceSessions: 'tennis-tracker:practice-sessions',
   settings: 'tennis-tracker:settings',
+  owner: 'tennis-tracker:owner', // このブラウザのローカルデータの持ち主(uid)
+  pendingReplace: 'tennis-tracker:pending-replace', // 復元直後、クラウドを置き換えるフラグ
 } as const;
 
 function load<T>(key: string): T[] {
@@ -48,4 +50,13 @@ export const settingsStorage = {
     }
   },
   save: (settings: RestringSettings) => localStorage.setItem(KEYS.settings, JSON.stringify(settings)),
+};
+
+// 同期用のメタ情報（ローカルデータの持ち主・復元フラグ）
+export const syncMeta = {
+  getOwner: (): string | null => localStorage.getItem(KEYS.owner),
+  setOwner: (uid: string) => localStorage.setItem(KEYS.owner, uid),
+  isPendingReplace: (): boolean => localStorage.getItem(KEYS.pendingReplace) === '1',
+  setPendingReplace: () => localStorage.setItem(KEYS.pendingReplace, '1'),
+  clearPendingReplace: () => localStorage.removeItem(KEYS.pendingReplace),
 };

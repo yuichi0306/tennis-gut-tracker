@@ -1,5 +1,5 @@
 import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
-import { racketStorage, stringingStorage, practiceStorage, settingsStorage } from './storage';
+import { racketStorage, stringingStorage, practiceStorage, settingsStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
 
 export interface BackupData {
@@ -83,6 +83,9 @@ export function importBackup(jsonText: string): ImportResult {
   if (obj.settings && typeof obj.settings === 'object') {
     settingsStorage.save(resolveSettings(obj.settings));
   }
+
+  // 復元は「置き換え」。ログイン中でもクラウドを結合せず、この内容で上書きさせる。
+  syncMeta.setPendingReplace();
 
   return {
     rackets: rackets.length,

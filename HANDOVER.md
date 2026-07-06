@@ -134,6 +134,9 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 - 未ログイン時は従来通り localStorage のみで動作。**Googleログインすると `users/{uid}` の1ドキュメントに全データを保存**し、リアルタイム同期する。
 - 実装: `src/lib/firebase.ts`（初期化・設定）、`src/lib/cloud.ts`（Firestore入出力）、`src/context/DataContext.tsx`（認証＋同期の中枢。各hookはここを参照するだけ）、`src/components/AuthBar.tsx`（ヘッダーのログインUI）。
 - 同期方式は**whole-document（後勝ち）**。初回ログイン時のみローカルとクラウドをid結合して取りこぼしを防ぐ。1人が複数端末で使う用途を想定。
+- ログイン統合ロジックは `resolveOnLogin`（DataContext）で分岐：
+  - **持ち主(uid)を `tennis-tracker:owner` に記録**。別アカウントでログインしたら、前アカウントのローカルデータは引き継がず（混ざらず）クラウド側を採用する。
+  - **復元時は `tennis-tracker:pending-replace` フラグ**を立て、ログイン中でも結合せずバックアップ内容でクラウドごと置き換える（データ復元＝置き換えを保証）。
 - `firebaseConfig` の apiKey は秘密情報ではなく公開されても問題ない。保護は **`firestore.rules`（本人のみ読み書き可）** で担保。
 - ログインは**ポップアップ方式**。モバイルPWA等でブロックされたら**リダイレクト方式に自動フォールバック**。
 
