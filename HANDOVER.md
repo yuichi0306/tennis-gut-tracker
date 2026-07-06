@@ -12,7 +12,8 @@
 
 - ラケットを登録し、ガットの張り替え記録（種類・テンション・張り場所）と練習記録（時間）を残す。
 - ダッシュボードで、ガット種類ごとの基準に照らして「張り替え時期」を自動判定する。
-- データはすべて**ブラウザのlocalStorage**に保存（サーバー・ログイン・外部通信なし）。
+- データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
+- **Googleログインすると端末間でリアルタイム同期**（Firebase / Firestore）。スマホとPCで同じデータを見られる。
 - **PWA対応**。スマホの「ホーム画面に追加」でアプリのように起動でき、オフラインでも動く。
 
 ---
@@ -27,6 +28,7 @@
 | ビルド | Vite 8 |
 | スタイル | Tailwind CSS v4（`@tailwindcss/vite`） |
 | PWA | vite-plugin-pwa（Workbox） |
+| 認証・同期 | Firebase（Google認証 + Cloud Firestore） |
 | Lint | oxlint |
 | ID採番 | uuid |
 | ホスティング | GitHub Pages（GitHub Actionsで自動デプロイ） |
@@ -124,6 +126,23 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
   「次の張り替えまで」の練習時間をそのガットの使用時間として積み上げて算出する（`lib/stats.ts`）。
 
 設定値が壊れていたり項目が欠けていても `resolveSettings()` が既定値で補完する。
+
+---
+
+## 6.5 端末間同期（Firebase）
+
+- 未ログイン時は従来通り localStorage のみで動作。**Googleログインすると `users/{uid}` の1ドキュメントに全データを保存**し、リアルタイム同期する。
+- 実装: `src/lib/firebase.ts`（初期化・設定）、`src/lib/cloud.ts`（Firestore入出力）、`src/context/DataContext.tsx`（認証＋同期の中枢。各hookはここを参照するだけ）、`src/components/AuthBar.tsx`（ヘッダーのログインUI）。
+- 同期方式は**whole-document（後勝ち）**。初回ログイン時のみローカルとクラウドをid結合して取りこぼしを防ぐ。1人が複数端末で使う用途を想定。
+- `firebaseConfig` の apiKey は秘密情報ではなく公開されても問題ない。保護は **`firestore.rules`（本人のみ読み書き可）** で担保。
+- ログインは**ポップアップ方式**。モバイルPWA等でブロックされたら**リダイレクト方式に自動フォールバック**。
+
+### Firebase側の設定（コンソール作業。済んでいない項目は要対応）
+1. Authentication → Sign-in method で **Google を有効化**。
+2. Authentication → Settings → 承認済みドメインに **`yuichi0306.github.io`** を追加（`localhost` は既定）。
+3. Firestore Database を作成（ロケーション `asia-northeast1`）。
+4. Firestore → ルール に **`firestore.rules` の内容を貼って公開**。
+- プロジェクト: `tennis-gut-tracker`（Sparkプラン=無料）。Googleアカウント `porapora36@gmail.com`。
 
 ---
 

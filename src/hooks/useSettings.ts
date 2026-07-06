@@ -1,18 +1,11 @@
-import { useEffect, useState } from 'react';
 import type { RestringSettings } from '../types';
-import { settingsStorage } from '../lib/storage';
-import { DEFAULT_SETTINGS } from '../lib/settings';
+import { useData } from '../context/DataContext';
 
 export function useSettings() {
-  const [settings, setSettings] = useState<RestringSettings>(DEFAULT_SETTINGS);
-
-  useEffect(() => {
-    setSettings(settingsStorage.get());
-  }, []);
+  const { settings, setSettings } = useData();
 
   function updateSettings(next: RestringSettings) {
-    setSettings(next);
-    settingsStorage.save(next);
+    setSettings(() => next);
   }
 
   return { settings, updateSettings };

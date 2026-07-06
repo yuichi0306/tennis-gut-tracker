@@ -6,6 +6,7 @@ import PracticePage from './pages/PracticePage';
 import StatsPage from './pages/StatsPage';
 import DataPage from './pages/DataPage';
 import SettingsPage from './pages/SettingsPage';
+import AuthBar from './components/AuthBar';
 
 const navItems = [
   { to: '/', label: 'ダッシュボード', end: true },
@@ -21,8 +22,9 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="bg-emerald-700 text-white shadow">
-        <div className="mx-auto max-w-4xl px-4 py-3">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3">
           <h1 className="text-lg font-bold">🎾 ガット使用歴トラッカー</h1>
+          <AuthBar />
         </div>
         <nav className="mx-auto flex max-w-4xl gap-1 px-2 overflow-x-auto">
           {navItems.map((item) => (

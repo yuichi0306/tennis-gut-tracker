@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// ガット使用歴トラッカーのFirestoreルール
+// users/{uid} には本人（ログイン済みで uid が一致するユーザー）だけがアクセスできる。
+// これによりリポジトリが公開でも、他人が他人のデータを読み書きすることはできない。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
