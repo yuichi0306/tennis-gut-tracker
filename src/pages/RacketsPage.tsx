@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useRackets } from '../hooks/useRackets';
 
 export default function RacketsPage() {
@@ -73,6 +74,9 @@ export default function RacketsPage() {
                     </>
                   ) : (
                     <>
+                      <Link to={`/racket/${r.id}`} className="text-sm text-emerald-700 hover:underline">
+                        タイムライン
+                      </Link>
                       <button onClick={() => startEdit(r.id, r.name)} className="text-sm text-emerald-700 hover:underline">
                         編集
                       </button>

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
-import type { PracticeSession } from '../types';
+import type { PracticeSession, TensionFeel } from '../types';
 import { todayISO } from '../lib/date';
 import HistoryFilter from '../components/HistoryFilter';
+import { TENSION_FEELS, tensionFeelLabel, tensionFeelClass } from '../lib/tensionFeel';
 
 export default function PracticePage() {
   const { rackets } = useRackets();
@@ -13,6 +14,7 @@ export default function PracticePage() {
   const [racketId, setRacketId] = useState('');
   const [date, setDate] = useState(todayISO());
   const [durationMinutes, setDurationMinutes] = useState('60');
+  const [tensionFeel, setTensionFeel] = useState<TensionFeel | ''>('');
   const [notes, setNotes] = useState('');
 
   const racketName = (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
@@ -22,6 +24,7 @@ export default function PracticePage() {
     setRacketId('');
     setDate(todayISO());
     setDurationMinutes('60');
+    setTensionFeel('');
     setNotes('');
   }
 
@@ -30,6 +33,7 @@ export default function PracticePage() {
     setRacketId(s.racketId);
     setDate(s.date);
     setDurationMinutes(String(s.durationMinutes));
+    setTensionFeel(s.tensionFeel ?? '');
     setNotes(s.notes);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -41,6 +45,7 @@ export default function PracticePage() {
       racketId,
       date,
       durationMinutes: Number(durationMinutes),
+      tensionFeel,
       notes: notes.trim(),
     };
     if (editingId) {
@@ -103,6 +108,15 @@ export default function PracticePage() {
               練習時間（分）
               <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} min="1" className="rounded border border-gray-300 px-2 py-1.5" required />
             </label>
+            <label className="flex flex-col gap-1 text-sm">
+              テンション体感（任意）
+              <select value={tensionFeel} onChange={(e) => setTensionFeel(e.target.value as TensionFeel | '')} className="rounded border border-gray-300 px-2 py-1.5">
+                <option value="">未選択</option>
+                {TENSION_FEELS.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+            </label>
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
               メモ
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="rounded border border-gray-300 px-2 py-1.5" />
@@ -152,7 +166,14 @@ export default function PracticePage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold">{s.date} - {racketName(s.racketId)}</p>
-                    <p>{Math.floor(s.durationMinutes / 60)}時間{s.durationMinutes % 60}分</p>
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span>{Math.floor(s.durationMinutes / 60)}時間{s.durationMinutes % 60}分</span>
+                      {s.tensionFeel && (
+                        <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tensionFeelClass(s.tensionFeel)}`}>
+                          {tensionFeelLabel(s.tensionFeel)}
+                        </span>
+                      )}
+                    </p>
                     {s.notes && <p className="text-gray-500">メモ: {s.notes}</p>}
                   </div>
                   <div className="flex shrink-0 gap-2">

@@ -82,7 +82,7 @@ export default function DashboardPage() {
           return (
             <li key={racket.id} className={`rounded border p-4 ${style.className}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold">{racket.name}</span>
+                <Link to={`/racket/${racket.id}`} className="font-semibold hover:underline">{racket.name}</Link>
                 <span className="rounded-full border px-3 py-0.5 text-xs font-medium">{style.label}</span>
               </div>
               {info.latestStringing ? (

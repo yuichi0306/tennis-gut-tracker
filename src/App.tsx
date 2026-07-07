@@ -4,6 +4,7 @@ import { useRestringSummary } from './hooks/useRestringSummary';
 import { setAppBadge, notifyRestring, notifyPermission } from './lib/notify';
 import DashboardPage from './pages/DashboardPage';
 import RacketsPage from './pages/RacketsPage';
+import RacketDetailPage from './pages/RacketDetailPage';
 import StringingPage from './pages/StringingPage';
 import PracticePage from './pages/PracticePage';
 import StatsPage from './pages/StatsPage';
@@ -74,6 +75,7 @@ function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/rackets" element={<RacketsPage />} />
+          <Route path="/racket/:id" element={<RacketDetailPage />} />
           <Route path="/stringing" element={<StringingPage />} />
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/stats" element={<StatsPage />} />

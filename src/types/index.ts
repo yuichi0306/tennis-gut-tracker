@@ -24,12 +24,16 @@ export interface StringingRecord {
   notes: string;
 }
 
+// ガットのテンション体感（張りたて→へたり）
+export type TensionFeel = 'tight' | 'ok' | 'loose';
+
 // 練習記録
 export interface PracticeSession {
   id: string;
   racketId: string;
   date: string; // ISO date
   durationMinutes: number;
+  tensionFeel?: TensionFeel | ''; // その日のテンション体感（任意）
   notes: string;
 }
 

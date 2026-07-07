@@ -93,7 +93,8 @@ public/
 ```ts
 Racket           { id, name, createdAt }
 StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, gutPrice?, stringingFee?, rating?, notes }  // rating=打感★1〜5、gutPrice/stringingFee=費用（円）。いずれも任意
-PracticeSession  { id, racketId, date, durationMinutes, notes }
+PracticeSession  { id, racketId, date, durationMinutes, tensionFeel?, notes }  // tensionFeel='tight'|'ok'|'loose'（任意）
+TensionFeel      'tight'（かたい/張りたて） | 'ok'（ちょうど） | 'loose'（ゆるい/へたり）
 GutType          'ポリエステル' | 'ナイロン（合成繊維）' | 'ナチュラル' | 'ハイブリッド'
 RestringSettings { thresholds: Record<GutType, { hours, days }> }
 ```
@@ -146,6 +147,15 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 3. Firestore Database を作成（ロケーション `asia-northeast1`）。
 4. Firestore → ルール に **`firestore.rules` の内容を貼って公開**。
 - プロジェクト: `tennis-gut-tracker`（Sparkプラン=無料）。Googleアカウント `porapora36@gmail.com`。
+
+---
+
+## 6.53 ラケット別タイムライン／テンション推移
+
+- ラケット詳細ページ `src/pages/RacketDetailPage.tsx`（ルート `/racket/:id`）。ダッシュボードのラケット名・ラケット一覧の「タイムライン」から遷移。
+- **テンション推移**：張り替えごとのメイン/クロステンションを自前SVGの折れ線で表示。
+- **タイムライン**：張り替えと練習を時系列（新しい順）に一覧。各練習に「張り替え後◯時間時点」を表示（同一張り替え期間内で練習時間を累積）。
+- 練習記録に **テンション体感**（`tensionFeel`）を任意で記録（`src/lib/tensionFeel.ts`）。タイムラインと練習履歴にバッジ表示。
 
 ---
 
