@@ -4,7 +4,7 @@
 
 - **公開URL**: https://yuichi0306.github.io/tennis-gut-tracker/
 - **リポジトリ**: https://github.com/yuichi0306/tennis-gut-tracker （パブリック）
-- **最終更新**: 2026-07-05
+- **最終更新**: 2026-07-07
 
 ---
 
@@ -57,29 +57,44 @@ npm run lint         # oxlint
 
 ```
 src/
-  main.tsx                 エントリ。BrowserRouter に basename を設定
-  App.tsx                  ヘッダー・タブナビ・ルート定義
+  main.tsx                 エントリ。BrowserRouter + DataProvider でラップ
+  App.tsx                  ヘッダー・タブナビ・ルート定義・起動時通知/バッジ
   index.css                Tailwind 読み込み
-  types/index.ts           型定義（Racket, StringingRecord, PracticeSession, RestringSettings ほか）
+  types/index.ts           型定義（Racket, StringingRecord, PracticeSession, TensionFeel, RestringSettings ほか）
+  context/
+    DataContext.tsx        全データ＋認証＋同期の中枢（各hookはここを参照）
   lib/
-    storage.ts             localStorage の read/write（キー定義もここ）
+    storage.ts             localStorage の read/write（キー定義・同期メタもここ）
     restring.ts            張り替え時期の判定ロジック
     settings.ts            ガット種類別の基準の既定値・正規化
-    stats.ts               統計用の集計（月別練習時間・ガット別使用傾向）
+    stats.ts               統計の集計（月別練習・ガット別使用傾向/平均★/コスト・costStats）
     backup.ts              エクスポート/インポート（バックアップ・復元）
+    date.ts                ローカルTZの日付ユーティリティ（todayISO 等）
+    cost.ts                費用の合算・¥表示（recordCost, formatYen）
+    tensionFeel.ts         テンション体感の選択肢・ラベル・色
+    notify.ts              ブラウザ通知・アプリアイコンバッジ
+    firebase.ts            Firebase 初期化・設定（apiKey もここ）
+    cloud.ts               Firestore 入出力（users/{uid} の read/write/購読）
   hooks/
-    useRackets.ts          ラケットのCRUD
+    useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useStringingRecords.ts 張り替え記録のCRUD
     usePracticeSessions.ts 練習記録のCRUD
     useSettings.ts         張り替え基準の設定の読み書き
+    useRestringSummary.ts  全ラケットの overdue/warning 集計（通知・バッジ用）
+  components/
+    AuthBar.tsx            ヘッダーのログイン/同期状態UI
+    StarRating.tsx         ★評価の入力/表示
+    HistoryFilter.tsx      履歴の絞り込みバー（共通）
   pages/
-    DashboardPage.tsx      張り替え時期の状況一覧
-    RacketsPage.tsx        ラケット管理
-    StringingPage.tsx      ガット張り替え記録（追加・編集・削除）
-    PracticePage.tsx       練習記録（追加・編集・削除）
-    StatsPage.tsx          統計（自前SVGの棒グラフ・バー）
+    DashboardPage.tsx      張り替え時期の状況一覧・要張り替えサマリー・通知オン
+    RacketsPage.tsx        ラケット管理（詳細/タイムラインへのリンク）
+    RacketDetailPage.tsx   ラケット詳細（テンション推移・タイムライン）。ルート /racket/:id
+    StringingPage.tsx      ガット張り替え記録（追加・編集・削除・絞り込み）
+    PracticePage.tsx       練習記録（追加・編集・削除・体感・絞り込み）
+    StatsPage.tsx          統計（自前SVGの棒グラフ・コスト・ガット別）
     DataPage.tsx           バックアップ/復元
     SettingsPage.tsx       ガット種類別の張り替え基準の設定
+firestore.rules            Firestore セキュリティルール（本人のみ読み書き可）
 public/
   favicon.svg / app-icon.svg          テニスボール風アイコン（SVG）
   pwa-192x192.png / pwa-512x512.png   PWAアイコン
@@ -104,8 +119,10 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 - `tennis-tracker:stringing-records`
 - `tennis-tracker:practice-sessions`
 - `tennis-tracker:settings`
+- `tennis-tracker:owner`（ローカルデータの持ち主uid：同期用）
+- `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
 
-データは端末・ブラウザごとに独立。機種変更やブラウザ変更時は「データ」タブでJSONを書き出し／読み込みして移行する。
+未ログイン時のデータは端末・ブラウザごとに独立。**Googleログインすると端末間で同期**される（6.1参照）。ログインしない場合は「データ」タブでJSONを書き出し／読み込みして移行する。
 
 ---
 
@@ -130,7 +147,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 
 ---
 
-## 6.5 端末間同期（Firebase）
+## 6.1 端末間同期（Firebase）
 
 - 未ログイン時は従来通り localStorage のみで動作。**Googleログインすると `users/{uid}` の1ドキュメントに全データを保存**し、リアルタイム同期する。
 - 実装: `src/lib/firebase.ts`（初期化・設定）、`src/lib/cloud.ts`（Firestore入出力）、`src/context/DataContext.tsx`（認証＋同期の中枢。各hookはここを参照するだけ）、`src/components/AuthBar.tsx`（ヘッダーのログインUI）。
@@ -141,43 +158,50 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 - `firebaseConfig` の apiKey は秘密情報ではなく公開されても問題ない。保護は **`firestore.rules`（本人のみ読み書き可）** で担保。
 - ログインは**ポップアップ方式**。モバイルPWA等でブロックされたら**リダイレクト方式に自動フォールバック**。
 
-### Firebase側の設定（コンソール作業。済んでいない項目は要対応）
+### Firebase側の設定（設定済み。再構築時の参照用）
 1. Authentication → Sign-in method で **Google を有効化**。
 2. Authentication → Settings → 承認済みドメインに **`yuichi0306.github.io`** を追加（`localhost` は既定）。
-3. Firestore Database を作成（ロケーション `asia-northeast1`）。
+3. Firestore Database を作成（ロケーション `asia-northeast1`、Standardエディション、DB ID `(default)`）。
 4. Firestore → ルール に **`firestore.rules` の内容を貼って公開**。
 - プロジェクト: `tennis-gut-tracker`（Sparkプラン=無料）。Googleアカウント `porapora36@gmail.com`。
 
 ---
 
-## 6.53 ラケット別タイムライン／テンション推移
+## 6.2 張り替え時期の通知
 
-- ラケット詳細ページ `src/pages/RacketDetailPage.tsx`（ルート `/racket/:id`）。ダッシュボードのラケット名・ラケット一覧の「タイムライン」から遷移。
-- **テンション推移**：張り替えごとのメイン/クロステンションを自前SVGの折れ線で表示。
-- **タイムライン**：張り替えと練習を時系列（新しい順）に一覧。各練習に「張り替え後◯時間時点」を表示（同一張り替え期間内で練習時間を累積）。
-- 練習記録に **テンション体感**（`tensionFeel`）を任意で記録（`src/lib/tensionFeel.ts`）。タイムラインと練習履歴にバッジ表示。
-
----
-
-## 6.54 コスト管理
-
-- 張り替え記録に **ガット代・張り代（円）** を入力でき、統計に **累計コスト・1回あたり・1時間あたり（練習時間換算）・ガット別コスト** を表示。
-- `src/lib/cost.ts`（`recordCost`＝ガット代＋張り代、`formatYen`）、集計は `src/lib/stats.ts` の `gutUsage`（cost追加）と `costStats`。
+- サーバー不要の「開いた時に知らせる」方式（無料構成のため。バックグラウンドpushは未対応）。
+- `src/lib/notify.ts`（ブラウザ通知・`navigator.setAppBadge`）、`src/hooks/useRestringSummary.ts`（全ラケットの overdue/warning 集計）。
+- ダッシュボードに要張り替えサマリーと「通知をオンにする」ボタン、ナビの「ダッシュボード」タブに推奨本数バッジ、`App.tsx` で起動時に一度だけ通知＋PWAアイコンにバッジ。
 
 ---
 
-## 6.55 記録の絞り込み
+## 6.3 打感の★評価
+
+- 張り替え記録に **★1〜5の打感評価**（`rating`）を任意で記録。`src/components/StarRating.tsx`（入力/表示兼用）。
+- 記録フォーム・履歴・ラケット詳細タイムラインに星を表示。統計「ガット別使用傾向」に **ガット別の平均★**（`gutUsage.avgRating`）。
+
+---
+
+## 6.4 記録の絞り込み
 
 - 張り替え履歴・練習履歴を **ラケット別・期間（開始/終了）・キーワード**（張り替えはガット種類も）で絞り込める。
 - 共通UI: `src/components/HistoryFilter.tsx`。フィルタ状態は各ページのローカルstate、絞り込みは表示時に`filter`で適用（データ本体は変更しない）。
 
 ---
 
-## 6.6 張り替え時期の通知
+## 6.5 コスト管理
 
-- サーバー不要の「開いた時に知らせる」方式（無料構成のため。バックグラウンドpushは未対応）。
-- `src/lib/notify.ts`（ブラウザ通知・`navigator.setAppBadge`）、`src/hooks/useRestringSummary.ts`（全ラケットの overdue/warning 集計）。
-- ダッシュボードに要張り替えサマリーと「通知をオンにする」ボタン、ナビの「ダッシュボード」タブに推奨本数バッジ、`App.tsx` で起動時に一度だけ通知＋PWAアイコンにバッジ。
+- 張り替え記録に **ガット代・張り代（円）** を入力でき、統計に **累計コスト・1回あたり・1時間あたり（練習時間換算）・ガット別コスト** を表示。
+- `src/lib/cost.ts`（`recordCost`＝ガット代＋張り代、`formatYen`）、集計は `src/lib/stats.ts` の `gutUsage`（cost追加）と `costStats`。
+
+---
+
+## 6.6 ラケット別タイムライン／テンション推移
+
+- ラケット詳細ページ `src/pages/RacketDetailPage.tsx`（ルート `/racket/:id`）。ダッシュボードのラケット名・ラケット一覧の「タイムライン」から遷移。
+- **テンション推移**：張り替えごとのメイン/クロステンションを自前SVGの折れ線で表示。
+- **タイムライン**：張り替えと練習を時系列（新しい順）に一覧。各練習に「張り替え後◯時間時点」を表示（同一張り替え期間内で練習時間を累積）。
+- 練習記録に **テンション体感**（`tensionFeel`）を任意で記録（`src/lib/tensionFeel.ts`）。タイムラインと練習履歴にバッジ表示。
 
 ---
 
@@ -213,8 +237,10 @@ git push origin main          # → 自動でビルド・デプロイ
 
 ## 9. 今後の拡張候補
 
-- 記録の検索・フィルタ（ラケット別・期間別）
-- 張り替え時期が近づいたときの通知（PWAのPush通知）
+- バックグラウンドのプッシュ通知（開いていなくても届く。要 FCM＋Cloud Functions ＝ 有料枠）
 - ネイティブアプリ化（Capacitor等でApp Store / Google Play配信）
-- 複数端末同期（Firebase / Supabase等のクラウド保存への移行）
+- 記録のCSVエクスポート、月間/年間のレポート
+- 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
+
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移
 ```
