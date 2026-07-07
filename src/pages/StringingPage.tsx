@@ -5,6 +5,7 @@ import type { GutType } from '../types';
 import type { StringingRecord } from '../types';
 import { todayISO } from '../lib/date';
 import StarRating from '../components/StarRating';
+import HistoryFilter from '../components/HistoryFilter';
 
 const gutTypes: GutType[] = ['ポリエステル', 'ナイロン（合成繊維）', 'ナチュラル', 'ハイブリッド'];
 
@@ -74,7 +75,35 @@ export default function StringingPage() {
     resetForm();
   }
 
+  // 絞り込み条件
+  const [fRacket, setFRacket] = useState('');
+  const [fGutType, setFGutType] = useState('');
+  const [fFrom, setFFrom] = useState('');
+  const [fTo, setFTo] = useState('');
+  const [fKeyword, setFKeyword] = useState('');
+  const filterActive = !!(fRacket || fGutType || fFrom || fTo || fKeyword.trim());
+
+  function clearFilters() {
+    setFRacket('');
+    setFGutType('');
+    setFFrom('');
+    setFTo('');
+    setFKeyword('');
+  }
+
   const sortedRecords = [...records].sort((a, b) => b.date.localeCompare(a.date));
+  const kw = fKeyword.trim().toLowerCase();
+  const filteredRecords = sortedRecords.filter((r) => {
+    if (fRacket && r.racketId !== fRacket) return false;
+    if (fGutType && r.gutType !== fGutType) return false;
+    if (fFrom && r.date < fFrom) return false;
+    if (fTo && r.date > fTo) return false;
+    if (kw) {
+      const haystack = `${r.gutName} ${r.shop} ${r.notes} ${racketName(r.racketId)}`.toLowerCase();
+      if (!haystack.includes(kw)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -155,8 +184,31 @@ export default function StringingPage() {
         {sortedRecords.length === 0 ? (
           <p className="text-sm text-gray-500">まだ記録がありません。</p>
         ) : (
+          <>
+            <HistoryFilter
+              rackets={rackets}
+              racketId={fRacket}
+              onRacketId={setFRacket}
+              gutTypes={gutTypes}
+              gutType={fGutType}
+              onGutType={setFGutType}
+              from={fFrom}
+              onFrom={setFFrom}
+              to={fTo}
+              onTo={setFTo}
+              keyword={fKeyword}
+              onKeyword={setFKeyword}
+              keywordPlaceholder="ガット名・張り場所・メモで検索"
+              active={filterActive}
+              onClear={clearFilters}
+              resultCount={filteredRecords.length}
+              totalCount={sortedRecords.length}
+            />
+            {filteredRecords.length === 0 ? (
+              <p className="text-sm text-gray-500">条件に一致する記録がありません。</p>
+            ) : (
           <ul className="space-y-2">
-            {sortedRecords.map((r) => (
+            {filteredRecords.map((r) => (
               <li key={r.id} className="rounded border border-gray-200 bg-white p-3 text-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -182,6 +234,8 @@ export default function StringingPage() {
               </li>
             ))}
           </ul>
+            )}
+          </>
         )}
       </section>
     </div>

@@ -3,6 +3,7 @@ import { useRackets } from '../hooks/useRackets';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import type { PracticeSession } from '../types';
 import { todayISO } from '../lib/date';
+import HistoryFilter from '../components/HistoryFilter';
 
 export default function PracticePage() {
   const { rackets } = useRackets();
@@ -50,7 +51,32 @@ export default function PracticePage() {
     resetForm();
   }
 
+  // 絞り込み条件
+  const [fRacket, setFRacket] = useState('');
+  const [fFrom, setFFrom] = useState('');
+  const [fTo, setFTo] = useState('');
+  const [fKeyword, setFKeyword] = useState('');
+  const filterActive = !!(fRacket || fFrom || fTo || fKeyword.trim());
+
+  function clearFilters() {
+    setFRacket('');
+    setFFrom('');
+    setFTo('');
+    setFKeyword('');
+  }
+
   const sortedSessions = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+  const kw = fKeyword.trim().toLowerCase();
+  const filteredSessions = sortedSessions.filter((s) => {
+    if (fRacket && s.racketId !== fRacket) return false;
+    if (fFrom && s.date < fFrom) return false;
+    if (fTo && s.date > fTo) return false;
+    if (kw) {
+      const haystack = `${s.notes} ${racketName(s.racketId)}`.toLowerCase();
+      if (!haystack.includes(kw)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -100,8 +126,28 @@ export default function PracticePage() {
         {sortedSessions.length === 0 ? (
           <p className="text-sm text-gray-500">まだ記録がありません。</p>
         ) : (
+          <>
+            <HistoryFilter
+              rackets={rackets}
+              racketId={fRacket}
+              onRacketId={setFRacket}
+              from={fFrom}
+              onFrom={setFFrom}
+              to={fTo}
+              onTo={setFTo}
+              keyword={fKeyword}
+              onKeyword={setFKeyword}
+              keywordPlaceholder="メモ・ラケット名で検索"
+              active={filterActive}
+              onClear={clearFilters}
+              resultCount={filteredSessions.length}
+              totalCount={sortedSessions.length}
+            />
+            {filteredSessions.length === 0 ? (
+              <p className="text-sm text-gray-500">条件に一致する記録がありません。</p>
+            ) : (
           <ul className="space-y-2">
-            {sortedSessions.map((s) => (
+            {filteredSessions.map((s) => (
               <li key={s.id} className="rounded border border-gray-200 bg-white p-3 text-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -121,6 +167,8 @@ export default function PracticePage() {
               </li>
             ))}
           </ul>
+            )}
+          </>
         )}
       </section>
     </div>
