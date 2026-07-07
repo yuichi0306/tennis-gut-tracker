@@ -6,6 +6,7 @@ import type { StringingRecord } from '../types';
 import { todayISO } from '../lib/date';
 import StarRating from '../components/StarRating';
 import HistoryFilter from '../components/HistoryFilter';
+import { recordCost, formatYen } from '../lib/cost';
 
 const gutTypes: GutType[] = ['ポリエステル', 'ナイロン（合成繊維）', 'ナチュラル', 'ハイブリッド'];
 
@@ -21,6 +22,8 @@ export default function StringingPage() {
   const [mainTension, setMainTension] = useState('50');
   const [crossTension, setCrossTension] = useState('50');
   const [shop, setShop] = useState('');
+  const [gutPrice, setGutPrice] = useState('');
+  const [stringingFee, setStringingFee] = useState('');
   const [rating, setRating] = useState(0);
   const [notes, setNotes] = useState('');
 
@@ -35,6 +38,8 @@ export default function StringingPage() {
     setMainTension('50');
     setCrossTension('50');
     setShop('');
+    setGutPrice('');
+    setStringingFee('');
     setRating(0);
     setNotes('');
   }
@@ -48,6 +53,8 @@ export default function StringingPage() {
     setMainTension(String(r.mainTension));
     setCrossTension(String(r.crossTension));
     setShop(r.shop);
+    setGutPrice(r.gutPrice ? String(r.gutPrice) : '');
+    setStringingFee(r.stringingFee ? String(r.stringingFee) : '');
     setRating(r.rating ?? 0);
     setNotes(r.notes);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -64,6 +71,8 @@ export default function StringingPage() {
       mainTension: Number(mainTension),
       crossTension: Number(crossTension),
       shop: shop.trim(),
+      gutPrice: Number(gutPrice) || 0,
+      stringingFee: Number(stringingFee) || 0,
       rating,
       notes: notes.trim(),
     };
@@ -150,6 +159,14 @@ export default function StringingPage() {
               張った場所
               <input type="text" value={shop} onChange={(e) => setShop(e.target.value)} placeholder="例: 自分で張った / ○○テニスショップ" className="rounded border border-gray-300 px-2 py-1.5" />
             </label>
+            <label className="flex flex-col gap-1 text-sm">
+              ガット代（円）
+              <input type="number" value={gutPrice} onChange={(e) => setGutPrice(e.target.value)} placeholder="例: 1500" min="0" step="1" className="rounded border border-gray-300 px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              張り代・工賃（円）
+              <input type="number" value={stringingFee} onChange={(e) => setStringingFee(e.target.value)} placeholder="例: 1000（自分で張る場合は0）" min="0" step="1" className="rounded border border-gray-300 px-2 py-1.5" />
+            </label>
             <div className="flex flex-col gap-1 text-sm">
               打感（★評価）
               <div className="flex h-[38px] items-center gap-2">
@@ -220,6 +237,14 @@ export default function StringingPage() {
                       </p>
                     ) : null}
                     {r.shop && <p className="text-gray-500">張り場所: {r.shop}</p>}
+                    {recordCost(r) > 0 && (
+                      <p className="text-gray-500">
+                        費用: {formatYen(recordCost(r))}
+                        {(r.gutPrice ?? 0) > 0 && (r.stringingFee ?? 0) > 0 && (
+                          <span className="text-gray-400">（ガット{formatYen(r.gutPrice ?? 0)}＋張り代{formatYen(r.stringingFee ?? 0)}）</span>
+                        )}
+                      </p>
+                    )}
                     {r.notes && <p className="text-gray-500">メモ: {r.notes}</p>}
                   </div>
                   <div className="flex shrink-0 gap-2">

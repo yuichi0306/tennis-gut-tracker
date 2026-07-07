@@ -1,4 +1,5 @@
 import type { PracticeSession, StringingRecord } from '../types';
+import { recordCost } from './cost';
 
 export interface MonthlyPractice {
   month: string; // YYYY-MM
@@ -42,6 +43,7 @@ export interface GutUsage {
   count: number; // 張り替え回数
   minutes: number; // そのガットで練習した合計時間（分）
   avgRating: number | null; // 打感の平均★（評価済みがなければ null）
+  cost: number; // そのガットにかかった合計費用（円）
 }
 
 // ガット別の使用傾向を集計する。
@@ -57,13 +59,15 @@ export function gutUsage(
     minutes: number;
     ratingSum: number;
     ratedCount: number;
+    cost: number;
   }
   const byGut = new Map<string, Acc>();
 
-  const add = (gutName: string, minutes: number, rating: number | undefined) => {
-    const cur = byGut.get(gutName) ?? { gutName, count: 0, minutes: 0, ratingSum: 0, ratedCount: 0 };
+  const add = (gutName: string, minutes: number, rating: number | undefined, cost: number) => {
+    const cur = byGut.get(gutName) ?? { gutName, count: 0, minutes: 0, ratingSum: 0, ratedCount: 0, cost: 0 };
     cur.count += 1;
     cur.minutes += minutes;
+    cur.cost += cost;
     if (typeof rating === 'number' && rating > 0) {
       cur.ratingSum += rating;
       cur.ratedCount += 1;
@@ -85,18 +89,47 @@ export function gutUsage(
       const minutes = practices
         .filter((s) => s.date >= start && (end === undefined || s.date < end))
         .reduce((sum, s) => sum + s.durationMinutes, 0);
-      add(rec.gutName, minutes, rec.rating);
+      add(rec.gutName, minutes, rec.rating, recordCost(rec));
     });
   }
 
   return [...byGut.values()]
-    .map(({ gutName, count, minutes, ratingSum, ratedCount }) => ({
+    .map(({ gutName, count, minutes, ratingSum, ratedCount, cost }) => ({
       gutName,
       count,
       minutes,
       avgRating: ratedCount > 0 ? ratingSum / ratedCount : null,
+      cost,
     }))
     .sort((a, b) => b.minutes - a.minutes || b.count - a.count);
+}
+
+export interface CostStats {
+  totalCost: number; // 累計コスト（円）
+  costedCount: number; // 費用を記録した張り替えの件数
+  avgCostPerStringing: number | null; // 1回あたりの平均コスト
+  costPerHour: number | null; // 1時間の練習あたりのコスト
+}
+
+// コスト集計。1時間あたりコストは「総コスト ÷ 総練習時間」。
+export function costStats(
+  stringingRecords: StringingRecord[],
+  practiceSessions: PracticeSession[],
+): CostStats {
+  let totalCost = 0;
+  let costedCount = 0;
+  for (const r of stringingRecords) {
+    const c = recordCost(r);
+    totalCost += c;
+    if (c > 0) costedCount += 1;
+  }
+  const totalMinutes = practiceSessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+  return {
+    totalCost,
+    costedCount,
+    avgCostPerStringing: costedCount > 0 ? totalCost / costedCount : null,
+    costPerHour: totalMinutes > 0 && totalCost > 0 ? totalCost / (totalMinutes / 60) : null,
+  };
 }
 
 // 分を「◯時間◯分」形式にする

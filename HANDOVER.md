@@ -92,7 +92,7 @@ public/
 
 ```ts
 Racket           { id, name, createdAt }
-StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, rating?, notes }  // rating=打感★1〜5（任意）
+StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, gutPrice?, stringingFee?, rating?, notes }  // rating=打感★1〜5、gutPrice/stringingFee=費用（円）。いずれも任意
 PracticeSession  { id, racketId, date, durationMinutes, notes }
 GutType          'ポリエステル' | 'ナイロン（合成繊維）' | 'ナチュラル' | 'ハイブリッド'
 RestringSettings { thresholds: Record<GutType, { hours, days }> }
@@ -146,6 +146,13 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 3. Firestore Database を作成（ロケーション `asia-northeast1`）。
 4. Firestore → ルール に **`firestore.rules` の内容を貼って公開**。
 - プロジェクト: `tennis-gut-tracker`（Sparkプラン=無料）。Googleアカウント `porapora36@gmail.com`。
+
+---
+
+## 6.54 コスト管理
+
+- 張り替え記録に **ガット代・張り代（円）** を入力でき、統計に **累計コスト・1回あたり・1時間あたり（練習時間換算）・ガット別コスト** を表示。
+- `src/lib/cost.ts`（`recordCost`＝ガット代＋張り代、`formatYen`）、集計は `src/lib/stats.ts` の `gutUsage`（cost追加）と `costStats`。
 
 ---
 

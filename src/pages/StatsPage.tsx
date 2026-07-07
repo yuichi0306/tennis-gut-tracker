@@ -1,6 +1,7 @@
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
-import { practiceByMonth, gutUsage, formatMinutes } from '../lib/stats';
+import { practiceByMonth, gutUsage, costStats, formatMinutes } from '../lib/stats';
+import { formatYen } from '../lib/cost';
 
 export default function StatsPage() {
   const { records } = useStringingRecords();
@@ -8,6 +9,7 @@ export default function StatsPage() {
 
   const monthly = practiceByMonth(sessions);
   const usage = gutUsage(records, sessions);
+  const cost = costStats(records, sessions);
 
   const totalMinutes = sessions.reduce((sum, s) => sum + s.durationMinutes, 0);
 
@@ -24,6 +26,28 @@ export default function StatsPage() {
       </section>
 
       <section>
+        <h2 className="mb-3 text-xl font-bold">コスト</h2>
+        {cost.totalCost === 0 ? (
+          <p className="text-sm text-gray-500">
+            張り替え記録に「ガット代」「張り代」を入力すると、ここに費用が集計されます。
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard label="累計コスト" value={formatYen(cost.totalCost)} sub={`張り替え${cost.costedCount}回分`} />
+            <StatCard
+              label="1回あたり"
+              value={cost.avgCostPerStringing !== null ? formatYen(cost.avgCostPerStringing) : '—'}
+            />
+            <StatCard
+              label="1時間あたり"
+              value={cost.costPerHour !== null ? formatYen(cost.costPerHour) : '—'}
+              sub="練習時間で換算"
+            />
+          </div>
+        )}
+      </section>
+
+      <section>
         <h2 className="mb-3 text-xl font-bold">ガット別の使用傾向</h2>
         {usage.length === 0 ? (
           <p className="text-sm text-gray-500">まだ張り替え記録がありません。</p>
@@ -31,6 +55,16 @@ export default function StatsPage() {
           <GutUsageChart data={usage} />
         )}
       </section>
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded border border-gray-200 bg-white p-4">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="mt-1 text-lg font-bold">{value}</p>
+      {sub && <p className="text-xs text-gray-400">{sub}</p>}
     </div>
   );
 }
@@ -78,7 +112,7 @@ function MonthlyChart({ data }: { data: { month: string; minutes: number }[] }) 
 function GutUsageChart({
   data,
 }: {
-  data: { gutName: string; count: number; minutes: number; avgRating: number | null }[];
+  data: { gutName: string; count: number; minutes: number; avgRating: number | null; cost: number }[];
 }) {
   const maxMinutes = Math.max(...data.map((d) => d.minutes), 1);
 
@@ -98,7 +132,7 @@ function GutUsageChart({
                 )}
               </span>
               <span className="shrink-0 text-gray-500">
-                {formatMinutes(d.minutes)}・{d.count}回
+                {formatMinutes(d.minutes)}・{d.count}回{d.cost > 0 ? `・${formatYen(d.cost)}` : ''}
               </span>
             </div>
             <div className="h-3 w-full overflow-hidden rounded bg-gray-100">
