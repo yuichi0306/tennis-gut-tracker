@@ -29,15 +29,17 @@ export default function StringingPage() {
 
   const racketName = (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
 
-  // 過去に入力したガット名の候補（使用回数が多い順）
-  const gutNameSuggestions = (() => {
+  // 過去の記録から入力候補を使用回数の多い順で作る
+  function suggestionsFrom(pick: (r: StringingRecord) => string): string[] {
     const counts = new Map<string, number>();
     for (const r of records) {
-      const name = r.gutName.trim();
-      if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+      const value = pick(r).trim();
+      if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
-  })();
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([value]) => value);
+  }
+  const gutNameSuggestions = suggestionsFrom((r) => r.gutName);
+  const shopSuggestions = suggestionsFrom((r) => r.shop);
 
   function resetForm() {
     setEditingId(null);
@@ -174,7 +176,14 @@ export default function StringingPage() {
             </label>
             <label className="flex flex-col gap-1 text-sm">
               張った場所
-              <input type="text" value={shop} onChange={(e) => setShop(e.target.value)} placeholder="例: 自分で張った / ○○テニスショップ" className="rounded border border-gray-300 px-2 py-1.5" />
+              <input type="text" list="shop-suggestions" value={shop} onChange={(e) => setShop(e.target.value)} placeholder="例: 自分で張った / ○○テニスショップ" className="rounded border border-gray-300 px-2 py-1.5" />
+              {shopSuggestions.length > 0 && (
+                <datalist id="shop-suggestions">
+                  {shopSuggestions.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+              )}
             </label>
             <label className="flex flex-col gap-1 text-sm">
               ガット代（円）
