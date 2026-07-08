@@ -46,7 +46,7 @@ export default function HistoryFilter(props: HistoryFilterProps) {
   } = props;
 
   return (
-    <div className="mb-3 rounded border border-gray-200 bg-white p-3">
+    <div className="mb-3 rounded-xl border border-gray-200 bg-white shadow-sm p-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           ラケット

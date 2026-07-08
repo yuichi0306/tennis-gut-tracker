@@ -38,7 +38,7 @@ export default function RacketsPage() {
             placeholder="例: Wilson Blade 98 v8"
             className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
           />
-          <button type="submit" className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+          <button type="submit" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
             追加
           </button>
         </form>
@@ -49,7 +49,7 @@ export default function RacketsPage() {
         {rackets.length === 0 ? (
           <p className="text-sm text-gray-500">まだラケットが登録されていません。</p>
         ) : (
-          <ul className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
+          <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
             {rackets.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-2 px-4 py-3">
                 {editingId === r.id ? (

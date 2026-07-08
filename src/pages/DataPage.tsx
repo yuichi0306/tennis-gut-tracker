@@ -44,7 +44,7 @@ export default function DataPage() {
         </p>
         <button
           onClick={handleExport}
-          className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+          className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800"
         >
           バックアップを書き出す
         </button>
@@ -58,13 +58,13 @@ export default function DataPage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { downloadStringingCsv(); setMessage({ type: 'ok', text: '張り替え記録をCSVで書き出しました。' }); }}
-            className="rounded border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
           >
             張り替え記録CSV
           </button>
           <button
             onClick={() => { downloadPracticeCsv(); setMessage({ type: 'ok', text: '練習記録をCSVで書き出しました。' }); }}
-            className="rounded border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
           >
             練習記録CSV
           </button>
@@ -79,7 +79,7 @@ export default function DataPage() {
         <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleFileSelected} className="hidden" />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="rounded border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
         >
           バックアップから復元する
         </button>

@@ -66,9 +66,9 @@ export default function RacketDetailPage() {
 
   if (!racket) {
     return (
-      <div className="rounded border border-gray-200 bg-white p-6 text-center">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-center">
         <p className="mb-3 text-gray-600">ラケットが見つかりませんでした。</p>
-        <Link to="/rackets" className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+        <Link to="/rackets" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
           ラケット一覧へ
         </Link>
       </div>
@@ -161,7 +161,7 @@ function TensionChart({ data }: { data: StringingRecord[] }) {
     data.map((d, i) => `${x(i)},${y(d[key])}`).join(' ');
 
   return (
-    <div className="overflow-x-auto rounded border border-gray-200 bg-white p-4">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm p-4">
       <svg width={width} height={height} role="img" aria-label="テンション推移グラフ">
         {data.length > 1 && (
           <>

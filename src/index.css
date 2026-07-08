@@ -1,1 +1,77 @@
 @import 'tailwindcss';
+
+@theme {
+  /* 日本語も含めて美しく表示されるシステムフォント優先スタック（オフラインでも確実） */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Hiragino Kaku Gothic ProN',
+    'Hiragino Sans', 'Noto Sans JP', Meiryo, sans-serif;
+
+  /* アプリ共通の背景（ほんのり寒色寄りのオフホワイト） */
+  --color-canvas: #f4f6f5;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+  }
+
+  /* 見出しは少し字間を詰めて締まった印象に */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-emerald-500) 28%, transparent);
+  }
+}
+
+/*
+  操作系の共通ポリッシュ。@layer の外に置くことで Tailwind のユーティリティ
+  （レイヤー内）より優先され、全ページのフォーム/ボタンに一括適用される。
+*/
+input:where([type='text'], [type='number'], [type='date'], [type='search'], [type='time']),
+select,
+textarea {
+  border-radius: 0.625rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-emerald-500);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-emerald-500) 22%, transparent);
+}
+
+select {
+  accent-color: var(--color-emerald-600);
+}
+
+button {
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease,
+    opacity 0.15s ease, transform 0.08s ease;
+}
+
+button:not(:disabled):active {
+  transform: translateY(0.5px);
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-emerald-500);
+  outline-offset: 2px;
+}
+
+/* 控えめなスクロールバー */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-gray-400) 60%, transparent) transparent;
+}

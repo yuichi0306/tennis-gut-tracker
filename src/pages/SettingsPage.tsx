@@ -56,7 +56,7 @@ export default function SettingsPage() {
             const th = draft.thresholds[gut];
             const def = DEFAULT_THRESHOLDS[gut];
             return (
-              <div key={gut} className="rounded border border-gray-200 bg-white p-4">
+              <div key={gut} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
                 <p className="mb-2 font-semibold">{gut}</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm">
@@ -96,7 +96,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={invalid}
-            className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             保存する
           </button>

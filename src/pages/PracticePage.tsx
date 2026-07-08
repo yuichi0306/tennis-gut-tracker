@@ -90,7 +90,7 @@ export default function PracticePage() {
         {rackets.length === 0 ? (
           <p className="text-sm text-gray-500">先に「ラケット」タブでラケットを登録してください。</p>
         ) : (
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded border border-gray-200 bg-white p-4 sm:grid-cols-2">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               ラケット
               <select value={racketId} onChange={(e) => setRacketId(e.target.value)} className="rounded border border-gray-300 px-2 py-1.5" required>
@@ -122,7 +122,7 @@ export default function PracticePage() {
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="rounded border border-gray-300 px-2 py-1.5" />
             </label>
             <div className="flex gap-2 sm:col-span-2">
-              <button type="submit" className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+              <button type="submit" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
                 {editingId ? '更新する' : '記録する'}
               </button>
               {editingId && (
@@ -162,7 +162,7 @@ export default function PracticePage() {
             ) : (
           <ul className="space-y-2">
             {filteredSessions.map((s) => (
-              <li key={s.id} className="rounded border border-gray-200 bg-white p-3 text-sm">
+              <li key={s.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-3 text-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold">{s.date} - {racketName(s.racketId)}</p>

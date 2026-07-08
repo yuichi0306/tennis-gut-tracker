@@ -10,11 +10,11 @@ import { canNotify, notifyPermission, requestNotifyPermission } from '../lib/not
 
 const BANNER_DISMISS_KEY = 'tennis-tracker:restring-banner-dismissed';
 
-const statusStyles: Record<RestringStatus, { label: string; className: string }> = {
-  'no-record': { label: '張り替え記録なし', className: 'bg-gray-100 text-gray-600 border-gray-300' },
-  ok: { label: '問題なし', className: 'bg-green-50 text-green-700 border-green-300' },
-  warning: { label: 'そろそろ張り替え時期', className: 'bg-amber-50 text-amber-700 border-amber-300' },
-  overdue: { label: '張り替え推奨', className: 'bg-red-50 text-red-700 border-red-300' },
+const statusStyles: Record<RestringStatus, { label: string; card: string; badge: string; dot: string }> = {
+  'no-record': { label: '張り替え記録なし', card: 'border-gray-200 bg-white', badge: 'border-gray-300 bg-gray-50 text-gray-500', dot: 'bg-gray-300' },
+  ok: { label: '問題なし', card: 'border-gray-200 bg-white', badge: 'border-emerald-200 bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
+  warning: { label: 'そろそろ張り替え時期', card: 'border-amber-200 bg-amber-50/70', badge: 'border-amber-300 bg-white text-amber-700', dot: 'bg-amber-500' },
+  overdue: { label: '張り替え推奨', card: 'border-red-200 bg-red-50/70', badge: 'border-red-300 bg-white text-red-600', dot: 'bg-red-500' },
 };
 
 export default function DashboardPage() {
@@ -44,9 +44,9 @@ export default function DashboardPage() {
 
   if (rackets.length === 0) {
     return (
-      <div className="rounded border border-gray-200 bg-white p-6 text-center">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-center">
         <p className="mb-3 text-gray-600">まだラケットが登録されていません。</p>
-        <Link to="/rackets" className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+        <Link to="/rackets" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
           ラケットを登録する
         </Link>
       </div>
@@ -58,7 +58,7 @@ export default function DashboardPage() {
       <h2 className="text-xl font-bold">張り替え時期の状況</h2>
 
       {showBanner && (
-        <div className="flex items-start justify-between gap-2 rounded border border-gray-200 bg-white p-3 text-sm">
+        <div className="flex items-start justify-between gap-2 rounded-xl border border-gray-200 bg-white shadow-sm p-3 text-sm">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {summary.overdue > 0 && (
               <span className="font-semibold text-red-700">🔴 張り替え推奨 {summary.overdue}本</span>
@@ -79,13 +79,13 @@ export default function DashboardPage() {
       )}
 
       {canNotify() && permission === 'default' && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
           <span className="text-emerald-800">
             通知をオンにすると、アプリを開いたときに張り替え時期をお知らせします。
           </span>
           <button
             onClick={enableNotifications}
-            className="shrink-0 rounded bg-emerald-700 px-3 py-1.5 font-medium text-white hover:bg-emerald-800"
+            className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1.5 font-semibold text-white shadow-sm hover:bg-emerald-800"
           >
             通知をオンにする
           </button>
@@ -102,13 +102,16 @@ export default function DashboardPage() {
           const info = getRestringInfo(racket.id, records, sessions, settings);
           const style = statusStyles[info.status];
           return (
-            <li key={racket.id} className={`rounded border p-4 ${style.className}`}>
+            <li key={racket.id} className={`rounded-xl border p-4 shadow-sm ${style.card}`}>
               <div className="flex items-center justify-between gap-2">
-                <Link to={`/racket/${racket.id}`} className="font-semibold hover:underline">{racket.name}</Link>
-                <span className="rounded-full border px-3 py-0.5 text-xs font-medium">{style.label}</span>
+                <Link to={`/racket/${racket.id}`} className="flex items-center gap-2 font-semibold hover:underline">
+                  <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} aria-hidden />
+                  {racket.name}
+                </Link>
+                <span className={`shrink-0 rounded-full border px-3 py-0.5 text-xs font-medium ${style.badge}`}>{style.label}</span>
               </div>
               {info.latestStringing ? (
-                <div className="mt-2 text-sm">
+                <div className="mt-2 space-y-0.5 text-sm text-gray-600">
                   <p>
                     最終張り替え: {info.latestStringing.date}（{info.daysSinceStringing}日経過
                     {info.threshold && ` / 基準${info.threshold.days}日`}）
@@ -123,7 +126,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <p className="mt-2 text-sm">
-                  <Link to="/stringing" className="underline">
+                  <Link to="/stringing" className="font-medium text-emerald-700 underline">
                     ガット張り替え記録を追加してください
                   </Link>
                 </p>

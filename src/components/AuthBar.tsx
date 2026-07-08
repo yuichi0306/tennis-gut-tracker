@@ -35,17 +35,17 @@ export default function AuthBar() {
   if (!authReady) return null;
 
   return (
-    <div className="flex flex-col items-end gap-0.5 text-xs">
+    <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs">
       {user ? (
         <div className="flex items-center gap-2">
-          <span className="text-emerald-100">
+          <span className="hidden text-emerald-100 sm:inline">
             {syncing ? '☁ 同期中…' : '☁ 同期中'}
             {user.displayName ? `：${user.displayName}` : ''}
           </span>
           <button
             onClick={handleSignOut}
             disabled={busy}
-            className="rounded border border-emerald-300 px-2 py-1 font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+            className="whitespace-nowrap rounded-lg border border-emerald-300/70 px-2.5 py-1.5 font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
           >
             ログアウト
           </button>
@@ -54,9 +54,9 @@ export default function AuthBar() {
         <button
           onClick={handleSignIn}
           disabled={busy}
-          className="rounded bg-white px-3 py-1 font-medium text-emerald-800 hover:bg-emerald-50 disabled:opacity-50"
+          className="shrink-0 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50 disabled:opacity-50"
         >
-          {busy ? 'ログイン中…' : 'Googleでログインして同期'}
+          {busy ? 'ログイン中…' : '☁ ログインして同期'}
         </button>
       )}
       {error && <span className="text-amber-200">{error}</span>}

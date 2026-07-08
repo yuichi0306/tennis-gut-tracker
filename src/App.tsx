@@ -40,38 +40,45 @@ function App() {
   }, [summary.overdue, summary.overdueNames]);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="bg-emerald-700 text-white shadow">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3">
-          <h1 className="text-lg font-bold">🎾 ガット使用歴トラッカー</h1>
+    <div className="min-h-screen text-gray-900">
+      <header className="sticky top-0 z-20 border-b border-black/5 bg-gradient-to-r from-emerald-700 to-emerald-600 text-white shadow-sm">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
+          <h1 className="flex min-w-0 items-center gap-2 text-base font-bold tracking-tight sm:text-lg">
+            <span className="text-xl leading-none" aria-hidden>🎾</span>
+            <span className="truncate">ガット使用歴トラッカー</span>
+          </h1>
           <AuthBar />
         </div>
-        <nav className="mx-auto flex max-w-4xl gap-1 px-2 overflow-x-auto">
-          {navItems.map((item) => {
-            const badge = item.to === '/' ? summary.overdue : 0;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `relative whitespace-nowrap rounded-t-md px-3 py-2 text-sm font-medium ${
-                    isActive ? 'bg-gray-50 text-emerald-800' : 'text-emerald-100 hover:bg-emerald-600'
-                  }`
-                }
-              >
-                {item.label}
-                {badge > 0 && (
-                  <span className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
-                    {badge}
-                  </span>
-                )}
-              </NavLink>
-            );
-          })}
+        <nav className="mx-auto max-w-4xl px-2">
+          <div className="flex gap-1 overflow-x-auto pb-2">
+            {navItems.map((item) => {
+              const badge = item.to === '/' ? summary.overdue : 0;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `relative flex shrink-0 items-center whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                      isActive
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-emerald-50 hover:bg-white/15'
+                    }`
+                  }
+                >
+                  {item.label}
+                  {badge > 0 && (
+                    <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white/30">
+                      {badge}
+                    </span>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
         </nav>
       </header>
-      <main className="mx-auto max-w-4xl px-4 py-6">
+      <main className="mx-auto max-w-4xl px-4 py-8">
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/rackets" element={<RacketsPage />} />

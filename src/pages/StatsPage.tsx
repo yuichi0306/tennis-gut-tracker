@@ -91,10 +91,10 @@ export default function StatsPage() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded border border-gray-200 bg-white p-4">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-lg font-bold">{value}</p>
-      {sub && <p className="text-xs text-gray-400">{sub}</p>}
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-medium tracking-wide text-gray-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight text-gray-900">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
     </div>
   );
 }
@@ -110,7 +110,7 @@ function MonthlyChart({ data }: { data: { month: string; minutes: number }[] }) 
   const height = topPad + chartHeight + labelHeight;
 
   return (
-    <div className="overflow-x-auto rounded border border-gray-200 bg-white p-4">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm p-4">
       <svg width={width} height={height} role="img" aria-label="月別練習時間の棒グラフ">
         {data.map((d, i) => {
           const barHeight = (d.minutes / maxMinutes) * chartHeight;
@@ -160,7 +160,7 @@ function GutComparisonTable({
   const best = 'font-bold text-emerald-700';
 
   return (
-    <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
       <table className="w-full min-w-[480px] text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
@@ -201,7 +201,7 @@ function GutUsageChart({
   const maxMinutes = Math.max(...data.map((d) => d.minutes), 1);
 
   return (
-    <ul className="space-y-3 rounded border border-gray-200 bg-white p-4">
+    <ul className="space-y-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
       {data.map((d) => {
         const pct = (d.minutes / maxMinutes) * 100;
         return (
