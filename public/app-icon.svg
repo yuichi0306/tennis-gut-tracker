@@ -1,8 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#047857"/>
-  <circle cx="256" cy="256" r="150" fill="#d4e600"/>
-  <g fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round">
-    <path d="M150 128 C 214 200, 214 312, 150 384"/>
-    <path d="M362 128 C 298 200, 298 312, 362 384"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0c9c6b"/>
+      <stop offset="1" stop-color="#045c43"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="38%" cy="32%" r="75%">
+      <stop offset="0" stop-color="#ebff6b"/>
+      <stop offset="55%" stop-color="#cbe000"/>
+      <stop offset="100%" stop-color="#9fb400"/>
+    </radialGradient>
+    <radialGradient id="shine" cx="34%" cy="26%" r="34%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 背景（ブランドのエメラルドグラデーション） -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- ボールの落ち影 -->
+  <ellipse cx="256" cy="436" rx="140" ry="20" fill="#000000" opacity="0.16"/>
+
+  <!-- テニスボール本体 -->
+  <circle cx="256" cy="256" r="168" fill="url(#ball)"/>
+
+  <!-- シーム（白い曲線） -->
+  <g fill="none" stroke="#ffffff" stroke-width="17" stroke-linecap="round">
+    <path d="M137 113 C 209 193, 209 319, 137 399"/>
+    <path d="M375 113 C 303 193, 303 319, 375 399"/>
   </g>
+
+  <!-- スペキュラハイライト -->
+  <circle cx="256" cy="256" r="168" fill="url(#shine)"/>
 </svg>

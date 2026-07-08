@@ -17,9 +17,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'ガット使用歴トラッカー',
-        short_name: 'ガット歴',
-        description: '張ったガットの種類・テンション・練習時間を記録し、張り替え時期を管理するアプリ',
+        name: 'テニスノート',
+        short_name: 'テニスノート',
+        description: 'ガットの張り替え履歴と練習記録をつけ、張り替え時期を管理するテニス用ノートアプリ',
         lang: 'ja',
         theme_color: '#047857',
         background_color: '#f9fafb',

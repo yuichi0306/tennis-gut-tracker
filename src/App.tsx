@@ -46,7 +46,7 @@ function App() {
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <h1 className="flex min-w-0 items-center gap-2 text-base font-bold tracking-tight sm:text-lg">
             <span className="text-xl leading-none" aria-hidden>🎾</span>
-            <span className="truncate">ガット使用歴トラッカー</span>
+            <span className="truncate">テニスノート</span>
           </h1>
           <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
