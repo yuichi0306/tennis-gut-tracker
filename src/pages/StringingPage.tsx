@@ -29,6 +29,16 @@ export default function StringingPage() {
 
   const racketName = (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
 
+  // 過去に入力したガット名の候補（使用回数が多い順）
+  const gutNameSuggestions = (() => {
+    const counts = new Map<string, number>();
+    for (const r of records) {
+      const name = r.gutName.trim();
+      if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  })();
+
   function resetForm() {
     setEditingId(null);
     setRacketId('');
@@ -137,7 +147,14 @@ export default function StringingPage() {
             </label>
             <label className="flex flex-col gap-1 text-sm">
               ガット名
-              <input type="text" value={gutName} onChange={(e) => setGutName(e.target.value)} placeholder="例: Luxilon ALU Power" className="rounded border border-gray-300 px-2 py-1.5" required />
+              <input type="text" list="gut-name-suggestions" value={gutName} onChange={(e) => setGutName(e.target.value)} placeholder="例: Luxilon ALU Power" className="rounded border border-gray-300 px-2 py-1.5" required />
+              {gutNameSuggestions.length > 0 && (
+                <datalist id="gut-name-suggestions">
+                  {gutNameSuggestions.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+              )}
             </label>
             <label className="flex flex-col gap-1 text-sm">
               ガットの種類
