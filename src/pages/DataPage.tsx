@@ -39,7 +39,7 @@ export default function DataPage() {
     <div className="space-y-6">
       <section>
         <h2 className="mb-2 text-xl font-bold">データのバックアップ</h2>
-        <p className="mb-3 text-sm text-gray-600">
+        <p className="mb-3 text-sm text-gray-600 dark:text-slate-300">
           記録はこの端末のブラウザ内に保存されています。機種変更やブラウザのデータ削除に備えて、ファイルに書き出して保管できます。
         </p>
         <button
@@ -52,19 +52,19 @@ export default function DataPage() {
 
       <section>
         <h2 className="mb-2 text-xl font-bold">CSVで書き出す</h2>
-        <p className="mb-3 text-sm text-gray-600">
+        <p className="mb-3 text-sm text-gray-600 dark:text-slate-300">
           記録をCSVファイルで書き出せます。Excelやスプレッドシートで開いて自由に集計・保管できます。
         </p>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { downloadStringingCsv(); setMessage({ type: 'ok', text: '張り替え記録をCSVで書き出しました。' }); }}
-            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
           >
             張り替え記録CSV
           </button>
           <button
             onClick={() => { downloadPracticeCsv(); setMessage({ type: 'ok', text: '練習記録をCSVで書き出しました。' }); }}
-            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
           >
             練習記録CSV
           </button>
@@ -73,20 +73,20 @@ export default function DataPage() {
 
       <section>
         <h2 className="mb-2 text-xl font-bold">データの復元</h2>
-        <p className="mb-3 text-sm text-gray-600">
+        <p className="mb-3 text-sm text-gray-600 dark:text-slate-300">
           書き出したバックアップファイル（.json）を選ぶと、現在のデータを<strong>すべて置き換え</strong>ます。
         </p>
         <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleFileSelected} className="hidden" />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+          className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
         >
           バックアップから復元する
         </button>
       </section>
 
       {message && (
-        <p className={`text-sm ${message.type === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>{message.text}</p>
+        <p className={`text-sm ${message.type === 'ok' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{message.text}</p>
       )}
     </div>
   );

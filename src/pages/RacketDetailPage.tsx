@@ -66,8 +66,8 @@ export default function RacketDetailPage() {
 
   if (!racket) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 text-center">
-        <p className="mb-3 text-gray-600">ラケットが見つかりませんでした。</p>
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-6 text-center">
+        <p className="mb-3 text-gray-600 dark:text-slate-300">ラケットが見つかりませんでした。</p>
         <Link to="/rackets" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
           ラケット一覧へ
         </Link>
@@ -78,14 +78,14 @@ export default function RacketDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/" className="text-sm text-emerald-700 hover:underline">← ダッシュボードへ</Link>
+        <Link to="/" className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">← ダッシュボードへ</Link>
         <h2 className="mt-1 text-xl font-bold">{racket.name}</h2>
       </div>
 
       <section>
         <h3 className="mb-2 font-bold">テンション推移</h3>
         {stringingsAsc.length === 0 ? (
-          <p className="text-sm text-gray-500">まだ張り替え記録がありません。</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">まだ張り替え記録がありません。</p>
         ) : (
           <TensionChart data={stringingsAsc} />
         )}
@@ -94,41 +94,41 @@ export default function RacketDetailPage() {
       <section>
         <h3 className="mb-2 font-bold">タイムライン</h3>
         {events.length === 0 ? (
-          <p className="text-sm text-gray-500">まだ記録がありません。</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">まだ記録がありません。</p>
         ) : (
           <ul className="space-y-2">
             {events.map((ev) => {
               if (ev.kind === 'string') {
                 const r = ev.rec;
                 return (
-                  <li key={`s-${r.id}`} className="rounded border border-gray-200 border-l-4 border-l-emerald-500 bg-white p-3 text-sm">
+                  <li key={`s-${r.id}`} className="rounded border border-gray-200 dark:border-slate-700 border-l-4 border-l-emerald-500 bg-white dark:bg-slate-800 p-3 text-sm">
                     <p className="font-semibold">🧵 {r.date} 張り替え</p>
                     <p>{r.gutName}（{r.gutType}） / メイン {r.mainTension}lbs・クロス {r.crossTension}lbs</p>
-                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-gray-500">
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-gray-500 dark:text-slate-400">
                       {r.rating ? <span className="flex items-center gap-1">打感: <StarRating value={r.rating} size="sm" /></span> : null}
                       {recordCost(r) > 0 && <span>費用: {formatYen(recordCost(r))}</span>}
                       {r.shop && <span>張り場所: {r.shop}</span>}
                     </p>
-                    {r.notes && <p className="text-gray-500">メモ: {r.notes}</p>}
+                    {r.notes && <p className="text-gray-500 dark:text-slate-400">メモ: {r.notes}</p>}
                   </li>
                 );
               }
               const cum = cumHoursById.get(ev.id);
               return (
-                <li key={`p-${ev.id}`} className="rounded border border-gray-200 border-l-4 border-l-sky-400 bg-white p-3 text-sm">
+                <li key={`p-${ev.id}`} className="rounded border border-gray-200 dark:border-slate-700 border-l-4 border-l-sky-400 bg-white dark:bg-slate-800 p-3 text-sm">
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">🎾 {ev.date} 練習</span>
-                    <span className="text-gray-600">{formatMinutes(ev.durationMinutes)}</span>
+                    <span className="text-gray-600 dark:text-slate-300">{formatMinutes(ev.durationMinutes)}</span>
                     {ev.tensionFeel && (
                       <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tensionFeelClass(ev.tensionFeel as never)}`}>
                         {tensionFeelLabel(ev.tensionFeel as never)}
                       </span>
                     )}
                     {cum !== null && cum !== undefined && (
-                      <span className="text-xs text-gray-400">張り替え後 約{cum.toFixed(1)}時間時点</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">張り替え後 約{cum.toFixed(1)}時間時点</span>
                     )}
                   </p>
-                  {ev.notes && <p className="text-gray-500">メモ: {ev.notes}</p>}
+                  {ev.notes && <p className="text-gray-500 dark:text-slate-400">メモ: {ev.notes}</p>}
                 </li>
               );
             })}
@@ -161,7 +161,7 @@ function TensionChart({ data }: { data: StringingRecord[] }) {
     data.map((d, i) => `${x(i)},${y(d[key])}`).join(' ');
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4">
       <svg width={width} height={height} role="img" aria-label="テンション推移グラフ">
         {data.length > 1 && (
           <>
@@ -176,16 +176,16 @@ function TensionChart({ data }: { data: StringingRecord[] }) {
               {d.mainTension}
             </text>
             <circle cx={x(i)} cy={y(d.crossTension)} r={3} className="fill-sky-400" />
-            <text x={x(i)} y={topPad + plotHeight + 16} textAnchor="middle" className="fill-gray-600 text-[10px]">
+            <text x={x(i)} y={topPad + plotHeight + 16} textAnchor="middle" className="fill-gray-600 dark:fill-slate-300 text-[10px]">
               {d.date.slice(5)}
             </text>
           </g>
         ))}
       </svg>
-      <div className="mt-1 flex gap-4 text-xs text-gray-500">
+      <div className="mt-1 flex gap-4 text-xs text-gray-500 dark:text-slate-400">
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-4 bg-emerald-600" />メイン</span>
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-4 bg-sky-400" />クロス</span>
-        <span className="text-gray-400">数値=メインのテンション(lbs)</span>
+        <span className="text-gray-400 dark:text-slate-500">数値=メインのテンション(lbs)</span>
       </div>
     </div>
   );

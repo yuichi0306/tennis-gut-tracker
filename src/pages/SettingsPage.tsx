@@ -45,7 +45,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <section>
         <h2 className="mb-1 text-xl font-bold">張り替え推奨の設定</h2>
-        <p className="mb-4 text-sm text-gray-600">
+        <p className="mb-4 text-sm text-gray-600 dark:text-slate-300">
           ガットの種類ごとに「使用時間」と「経過日数」の推奨ラインを設定できます。
           どちらかが基準に達すると<strong>「張り替え推奨」</strong>、基準の{warningPct}%に達すると
           <strong>「そろそろ」</strong>と表示します。
@@ -56,7 +56,7 @@ export default function SettingsPage() {
             const th = draft.thresholds[gut];
             const def = DEFAULT_THRESHOLDS[gut];
             return (
-              <div key={gut} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+              <div key={gut} className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4">
                 <p className="mb-2 font-semibold">{gut}</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm">
@@ -66,7 +66,7 @@ export default function SettingsPage() {
                       min="1"
                       value={th?.hours ?? ''}
                       onChange={(e) => handleChange(gut, 'hours', e.target.value)}
-                      className="rounded border border-gray-300 px-2 py-1.5"
+                      className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5"
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm">
@@ -76,11 +76,11 @@ export default function SettingsPage() {
                       min="1"
                       value={th?.days ?? ''}
                       onChange={(e) => handleChange(gut, 'days', e.target.value)}
-                      className="rounded border border-gray-300 px-2 py-1.5"
+                      className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5"
                     />
                   </label>
                 </div>
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
                   既定: {def.hours}時間 / {def.days}日（約{Math.round((def.days / 30) * 10) / 10}ヶ月）
                 </p>
               </div>
@@ -89,7 +89,7 @@ export default function SettingsPage() {
         </div>
 
         {invalid && (
-          <p className="mt-3 text-sm text-red-600">各項目は1以上の数値を入力してください。</p>
+          <p className="mt-3 text-sm text-red-600 dark:text-red-400">各項目は1以上の数値を入力してください。</p>
         )}
 
         <div className="mt-4 flex items-center gap-3">
@@ -100,10 +100,10 @@ export default function SettingsPage() {
           >
             保存する
           </button>
-          <button onClick={handleReset} className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+          <button onClick={handleReset} className="rounded border border-gray-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
             既定値に戻す
           </button>
-          {saved && <span className="text-sm text-emerald-700">保存しました。</span>}
+          {saved && <span className="text-sm text-emerald-700 dark:text-emerald-400">保存しました。</span>}
         </div>
       </section>
     </div>

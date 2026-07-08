@@ -11,6 +11,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="ガット歴" />
     <title>ガット使用歴トラッカー</title>
+    <script>
+      // 描画前にテーマを確定させてちらつきを防ぐ（保存値 → なければOS設定）
+      try {
+        var t = localStorage.getItem('tennis-tracker:theme');
+        if (t !== 'dark' && t !== 'light') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

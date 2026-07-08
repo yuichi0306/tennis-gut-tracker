@@ -22,7 +22,7 @@ interface HistoryFilterProps {
   totalCount: number;
 }
 
-const inputClass = 'rounded border border-gray-300 px-2 py-1.5';
+const inputClass = 'rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5';
 
 export default function HistoryFilter(props: HistoryFilterProps) {
   const {
@@ -46,7 +46,7 @@ export default function HistoryFilter(props: HistoryFilterProps) {
   } = props;
 
   return (
-    <div className="mb-3 rounded-xl border border-gray-200 bg-white shadow-sm p-3">
+    <div className="mb-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           ラケット
@@ -85,10 +85,10 @@ export default function HistoryFilter(props: HistoryFilterProps) {
         </label>
       </div>
 
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+      <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
         <span>{active ? `${resultCount} / ${totalCount} 件を表示` : `全 ${totalCount} 件`}</span>
         {active && (
-          <button onClick={onClear} className="text-emerald-700 hover:underline">
+          <button onClick={onClear} className="text-emerald-700 dark:text-emerald-400 hover:underline">
             絞り込みをクリア
           </button>
         )}

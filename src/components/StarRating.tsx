@@ -15,7 +15,7 @@ export default function StarRating({ value, onChange, size = 'md' }: StarRatingP
       {[1, 2, 3, 4, 5].map((n) => {
         const filled = n <= value;
         const star = (
-          <span className={filled ? 'text-amber-400' : 'text-gray-300'}>★</span>
+          <span className={filled ? 'text-amber-400' : 'text-gray-300 dark:text-slate-600'}>★</span>
         );
         if (readOnly) return <span key={n}>{star}</span>;
         return (

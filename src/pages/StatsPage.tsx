@@ -34,9 +34,9 @@ export default function StatsPage() {
 
       <section>
         <h2 className="mb-1 text-xl font-bold">月別の練習時間</h2>
-        <p className="mb-3 text-sm text-gray-500">累計 {formatMinutes(totalMinutes)}（全 {sessions.length} 回）</p>
+        <p className="mb-3 text-sm text-gray-500 dark:text-slate-400">累計 {formatMinutes(totalMinutes)}（全 {sessions.length} 回）</p>
         {monthly.length === 0 ? (
-          <p className="text-sm text-gray-500">まだ練習記録がありません。</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">まだ練習記録がありません。</p>
         ) : (
           <MonthlyChart data={monthly} />
         )}
@@ -45,7 +45,7 @@ export default function StatsPage() {
       <section>
         <h2 className="mb-3 text-xl font-bold">コスト</h2>
         {cost.totalCost === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             張り替え記録に「ガット代」「張り代」を入力すると、ここに費用が集計されます。
           </p>
         ) : (
@@ -67,7 +67,7 @@ export default function StatsPage() {
       <section>
         <h2 className="mb-3 text-xl font-bold">ガット別の使用傾向</h2>
         {usage.length === 0 ? (
-          <p className="text-sm text-gray-500">まだ張り替え記録がありません。</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">まだ張り替え記録がありません。</p>
         ) : (
           <GutUsageChart data={usage} />
         )}
@@ -75,12 +75,12 @@ export default function StatsPage() {
 
       <section>
         <h2 className="mb-1 text-xl font-bold">ガット比較</h2>
-        <p className="mb-3 text-sm text-gray-500">
+        <p className="mb-3 text-sm text-gray-500 dark:text-slate-400">
           打感・持ち（1回あたりの使用時間）・コスパ（1時間あたり費用）を並べて比較します。各項目の一番良い値を
-          <span className="font-medium text-emerald-700">緑色</span>で示します。
+          <span className="font-medium text-emerald-700 dark:text-emerald-400">緑色</span>で示します。
         </p>
         {comparison.length < 2 ? (
-          <p className="text-sm text-gray-500">2種類以上のガットを記録すると比較できます。</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">2種類以上のガットを記録すると比較できます。</p>
         ) : (
           <GutComparisonTable data={comparison} />
         )}
@@ -91,10 +91,10 @@ export default function StatsPage() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium tracking-wide text-gray-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold tracking-tight text-gray-900">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
+    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+      <p className="text-xs font-medium tracking-wide text-gray-500 dark:text-slate-400">{label}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight text-gray-900 dark:text-slate-100">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-gray-400 dark:text-slate-500">{sub}</p>}
     </div>
   );
 }
@@ -110,7 +110,7 @@ function MonthlyChart({ data }: { data: { month: string; minutes: number }[] }) 
   const height = topPad + chartHeight + labelHeight;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4">
       <svg width={width} height={height} role="img" aria-label="月別練習時間の棒グラフ">
         {data.map((d, i) => {
           const barHeight = (d.minutes / maxMinutes) * chartHeight;
@@ -120,15 +120,15 @@ function MonthlyChart({ data }: { data: { month: string; minutes: number }[] }) 
           return (
             <g key={d.month}>
               {d.minutes > 0 && (
-                <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="fill-gray-500 text-[10px]">
+                <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="fill-gray-500 dark:fill-slate-400 text-[10px]">
                   {Math.round((d.minutes / 60) * 10) / 10}h
                 </text>
               )}
               <rect x={x} y={y} width={barWidth} height={barHeight} rx={3} className="fill-emerald-600" />
-              <text x={x + barWidth / 2} y={topPad + chartHeight + 16} textAnchor="middle" className="fill-gray-600 text-[10px]">
+              <text x={x + barWidth / 2} y={topPad + chartHeight + 16} textAnchor="middle" className="fill-gray-600 dark:fill-slate-300 text-[10px]">
                 {Number(mm)}月
               </text>
-              <text x={x + barWidth / 2} y={topPad + chartHeight + 30} textAnchor="middle" className="fill-gray-400 text-[9px]">
+              <text x={x + barWidth / 2} y={topPad + chartHeight + 30} textAnchor="middle" className="fill-gray-400 dark:fill-slate-500 text-[9px]">
                 {d.month.slice(0, 4)}
               </text>
             </g>
@@ -157,13 +157,13 @@ function GutComparisonTable({
   const costs = data.map((d) => d.costPerHour).filter((v): v is number => v !== null);
   const bestCost = costs.length ? Math.min(...costs) : null;
 
-  const best = 'font-bold text-emerald-700';
+  const best = 'font-bold text-emerald-700 dark:text-emerald-400';
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
       <table className="w-full min-w-[480px] text-sm">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
+          <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-xs text-gray-500 dark:text-slate-400">
             <th className="px-3 py-2 font-medium">ガット名</th>
             <th className="px-3 py-2 text-right font-medium">張替回数</th>
             <th className="px-3 py-2 text-right font-medium">打感★</th>
@@ -175,14 +175,14 @@ function GutComparisonTable({
           {data.map((d) => (
             <tr key={d.gutName} className="border-b border-gray-100 last:border-0">
               <td className="px-3 py-2 font-medium">{d.gutName}</td>
-              <td className="px-3 py-2 text-right text-gray-600">{d.count}回</td>
-              <td className={`px-3 py-2 text-right ${d.avgRating !== null && d.avgRating === bestRating ? best : 'text-gray-600'}`}>
+              <td className="px-3 py-2 text-right text-gray-600 dark:text-slate-300">{d.count}回</td>
+              <td className={`px-3 py-2 text-right ${d.avgRating !== null && d.avgRating === bestRating ? best : 'text-gray-600 dark:text-slate-300'}`}>
                 {d.avgRating !== null ? `★${d.avgRating.toFixed(1)}` : '—'}
               </td>
-              <td className={`px-3 py-2 text-right ${d.hoursPerStringing > 0 && d.hoursPerStringing === bestHours ? best : 'text-gray-600'}`}>
+              <td className={`px-3 py-2 text-right ${d.hoursPerStringing > 0 && d.hoursPerStringing === bestHours ? best : 'text-gray-600 dark:text-slate-300'}`}>
                 {d.hoursPerStringing > 0 ? `${d.hoursPerStringing.toFixed(1)}時間` : '—'}
               </td>
-              <td className={`px-3 py-2 text-right ${d.costPerHour !== null && d.costPerHour === bestCost ? best : 'text-gray-600'}`}>
+              <td className={`px-3 py-2 text-right ${d.costPerHour !== null && d.costPerHour === bestCost ? best : 'text-gray-600 dark:text-slate-300'}`}>
                 {d.costPerHour !== null ? formatYen(d.costPerHour) : '—'}
               </td>
             </tr>
@@ -201,7 +201,7 @@ function GutUsageChart({
   const maxMinutes = Math.max(...data.map((d) => d.minutes), 1);
 
   return (
-    <ul className="space-y-3 rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+    <ul className="space-y-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4">
       {data.map((d) => {
         const pct = (d.minutes / maxMinutes) * 100;
         return (
@@ -215,11 +215,11 @@ function GutUsageChart({
                   </span>
                 )}
               </span>
-              <span className="shrink-0 text-gray-500">
+              <span className="shrink-0 text-gray-500 dark:text-slate-400">
                 {formatMinutes(d.minutes)}・{d.count}回{d.cost > 0 ? `・${formatYen(d.cost)}` : ''}
               </span>
             </div>
-            <div className="h-3 w-full overflow-hidden rounded bg-gray-100">
+            <div className="h-3 w-full overflow-hidden rounded bg-gray-100 dark:bg-slate-700">
               <div className="h-full rounded bg-emerald-600" style={{ width: `${Math.max(pct, 2)}%` }} />
             </div>
           </li>

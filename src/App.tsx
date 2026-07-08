@@ -11,6 +11,7 @@ import StatsPage from './pages/StatsPage';
 import DataPage from './pages/DataPage';
 import SettingsPage from './pages/SettingsPage';
 import AuthBar from './components/AuthBar';
+import ThemeToggle from './components/ThemeToggle';
 
 const navItems = [
   { to: '/', label: 'ダッシュボード', end: true },
@@ -40,14 +41,17 @@ function App() {
   }, [summary.overdue, summary.overdueNames]);
 
   return (
-    <div className="min-h-screen text-gray-900">
-      <header className="sticky top-0 z-20 border-b border-black/5 bg-gradient-to-r from-emerald-700 to-emerald-600 text-white shadow-sm">
+    <div className="min-h-screen text-gray-900 dark:text-slate-100">
+      <header className="sticky top-0 z-20 border-b border-black/5 bg-gradient-to-r from-emerald-700 to-emerald-600 text-white shadow-sm dark:border-white/10">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <h1 className="flex min-w-0 items-center gap-2 text-base font-bold tracking-tight sm:text-lg">
             <span className="text-xl leading-none" aria-hidden>🎾</span>
             <span className="truncate">ガット使用歴トラッカー</span>
           </h1>
-          <AuthBar />
+          <div className="flex shrink-0 items-center gap-1">
+            <ThemeToggle />
+            <AuthBar />
+          </div>
         </div>
         <nav className="mx-auto max-w-4xl px-2">
           <div className="flex gap-1 overflow-x-auto pb-2">

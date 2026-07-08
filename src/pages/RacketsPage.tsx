@@ -36,7 +36,7 @@ export default function RacketsPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="例: Wilson Blade 98 v8"
-            className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+            className="flex-1 rounded border border-gray-300 dark:border-slate-600 px-3 py-2 text-sm"
           />
           <button type="submit" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
             追加
@@ -47,9 +47,9 @@ export default function RacketsPage() {
       <section>
         <h2 className="mb-2 text-xl font-bold">登録済みラケット</h2>
         {rackets.length === 0 ? (
-          <p className="text-sm text-gray-500">まだラケットが登録されていません。</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">まだラケットが登録されていません。</p>
         ) : (
-          <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
+          <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
             {rackets.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-2 px-4 py-3">
                 {editingId === r.id ? (
@@ -57,7 +57,7 @@ export default function RacketsPage() {
                     type="text"
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
-                    className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                    className="flex-1 rounded border border-gray-300 dark:border-slate-600 px-2 py-1 text-sm"
                   />
                 ) : (
                   <span className="text-sm">{r.name}</span>
@@ -65,19 +65,19 @@ export default function RacketsPage() {
                 <div className="flex shrink-0 gap-2">
                   {editingId === r.id ? (
                     <>
-                      <button onClick={() => saveEdit(r.id)} className="text-sm text-emerald-700 hover:underline">
+                      <button onClick={() => saveEdit(r.id)} className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">
                         保存
                       </button>
-                      <button onClick={() => setEditingId(null)} className="text-sm text-gray-500 hover:underline">
+                      <button onClick={() => setEditingId(null)} className="text-sm text-gray-500 dark:text-slate-400 hover:underline">
                         キャンセル
                       </button>
                     </>
                   ) : (
                     <>
-                      <Link to={`/racket/${r.id}`} className="text-sm text-emerald-700 hover:underline">
+                      <Link to={`/racket/${r.id}`} className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">
                         タイムライン
                       </Link>
-                      <button onClick={() => startEdit(r.id, r.name)} className="text-sm text-emerald-700 hover:underline">
+                      <button onClick={() => startEdit(r.id, r.name)} className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">
                         編集
                       </button>
                       <button
@@ -86,7 +86,7 @@ export default function RacketsPage() {
                             deleteRacket(r.id);
                           }
                         }}
-                        className="text-sm text-red-600 hover:underline"
+                        className="text-sm text-red-600 dark:text-red-400 hover:underline"
                       >
                         削除
                       </button>

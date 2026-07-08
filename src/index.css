@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* ダークモードは data-theme 属性で切り替える（システム設定＋手動トグル対応） */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 @theme {
   /* 日本語も含めて美しく表示されるシステムフォント優先スタック（オフラインでも確実） */
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Hiragino Kaku Gothic ProN',
@@ -7,6 +10,15 @@
 
   /* アプリ共通の背景（ほんのり寒色寄りのオフホワイト） */
   --color-canvas: #f4f6f5;
+}
+
+:root {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --color-canvas: #0f172a; /* slate-900 */
 }
 
 @layer base {
@@ -53,6 +65,20 @@ textarea:focus-visible {
 
 select {
   accent-color: var(--color-emerald-600);
+}
+
+/* ダーク時のフォーム要素（bg 指定のない input に暗い背景を与える） */
+[data-theme='dark'] input:where([type='text'], [type='number'], [type='date'], [type='search'], [type='time']),
+[data-theme='dark'] select,
+[data-theme='dark'] textarea {
+  background-color: #0f172a; /* slate-900 */
+  border-color: var(--color-slate-600);
+  color: var(--color-slate-100);
+}
+
+[data-theme='dark'] input::placeholder,
+[data-theme='dark'] textarea::placeholder {
+  color: var(--color-slate-500);
 }
 
 button {
