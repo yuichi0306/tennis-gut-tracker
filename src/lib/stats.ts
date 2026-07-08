@@ -38,6 +38,36 @@ export function practiceByMonth(sessions: PracticeSession[]): MonthlyPractice[] 
   return result;
 }
 
+export interface MonthlySummary {
+  month: string; // YYYY-MM（対象＝今月）
+  minutes: number; // 今月の練習時間（分）
+  count: number; // 今月の練習回数
+  prevMinutes: number; // 先月の練習時間（分・比較用）
+}
+
+// 今月の練習サマリーを集計する。todayIso はローカルTZの YYYY-MM-DD を渡す。
+export function monthlySummary(sessions: PracticeSession[], todayIso: string): MonthlySummary {
+  const month = todayIso.slice(0, 7);
+  const [y, m] = month.split('-').map(Number);
+  const prevY = m === 1 ? y - 1 : y;
+  const prevM = m === 1 ? 12 : m - 1;
+  const prevMonth = `${prevY}-${String(prevM).padStart(2, '0')}`;
+
+  let minutes = 0;
+  let count = 0;
+  let prevMinutes = 0;
+  for (const s of sessions) {
+    const mo = s.date.slice(0, 7);
+    if (mo === month) {
+      minutes += s.durationMinutes;
+      count += 1;
+    } else if (mo === prevMonth) {
+      prevMinutes += s.durationMinutes;
+    }
+  }
+  return { month, minutes, count, prevMinutes };
+}
+
 export interface GutUsage {
   gutName: string;
   count: number; // 張り替え回数
@@ -102,6 +132,23 @@ export function gutUsage(
       cost,
     }))
     .sort((a, b) => b.minutes - a.minutes || b.count - a.count);
+}
+
+export interface GutComparison extends GutUsage {
+  hoursPerStringing: number; // 持ち：1回の張り替えあたりの平均使用時間（時間）
+  costPerHour: number | null; // コスパ：1時間あたりコスト（費用も練習時間もある時のみ）
+}
+
+// ガット比較用に、gutUsage へ「持ち」「コスパ」を加える。
+export function gutComparison(
+  stringingRecords: StringingRecord[],
+  practiceSessions: PracticeSession[],
+): GutComparison[] {
+  return gutUsage(stringingRecords, practiceSessions).map((g) => ({
+    ...g,
+    hoursPerStringing: g.count > 0 ? g.minutes / 60 / g.count : 0,
+    costPerHour: g.cost > 0 && g.minutes > 0 ? g.cost / (g.minutes / 60) : null,
+  }));
 }
 
 export interface CostStats {

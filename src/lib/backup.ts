@@ -1,6 +1,8 @@
 import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
 import { racketStorage, stringingStorage, practiceStorage, settingsStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
+import { recordCost } from './cost';
+import { tensionFeelLabel } from './tensionFeel';
 
 export interface BackupData {
   app: 'tennis-gut-tracker';
@@ -25,20 +27,72 @@ export function buildBackup(): BackupData {
   };
 }
 
-// バックアップJSONをファイルとしてダウンロードさせる
-export function downloadBackup() {
-  const data = buildBackup();
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
+// テキストをファイルとしてダウンロードさせる共通処理
+function downloadText(filename: string, text: string, mime: string) {
+  const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
-  const date = data.exportedAt.slice(0, 10);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `tennis-gut-tracker-backup-${date}.json`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// バックアップJSONをファイルとしてダウンロードさせる
+export function downloadBackup() {
+  const data = buildBackup();
+  const json = JSON.stringify(data, null, 2);
+  const date = data.exportedAt.slice(0, 10);
+  downloadText(`tennis-gut-tracker-backup-${date}.json`, json, 'application/json');
+}
+
+// CSVの1セルをエスケープする（カンマ・改行・引用符を含む場合は "" で囲む）
+function csvEscape(value: string | number): string {
+  const s = String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// ヘッダー＋行データを CSV 文字列にする。Excel(日本語)対策でBOMを付ける。
+function toCsv(headers: string[], rows: (string | number)[][]): string {
+  const lines = [headers, ...rows].map((cols) => cols.map(csvEscape).join(','));
+  const bom = String.fromCharCode(0xfeff); // 先頭のBOMでExcelが日本語を正しく読む
+  return bom + lines.join('\r\n');
+}
+
+// ラケットidから名前を引く関数を作る
+function racketNamer() {
+  const rackets = racketStorage.getAll();
+  return (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
+}
+
+// 張り替え記録をCSVで書き出す
+export function downloadStringingCsv() {
+  const nameOf = racketNamer();
+  const records = [...stringingStorage.getAll()].sort((a, b) => a.date.localeCompare(b.date));
+  const headers = [
+    '日付', 'ラケット', 'ガット名', '種類', 'メインテンション(lbs)', 'クロステンション(lbs)',
+    '張り場所', 'ガット代(円)', '張り代(円)', '合計費用(円)', '打感(★1-5)', 'メモ',
+  ];
+  const rows = records.map((r) => [
+    r.date, nameOf(r.racketId), r.gutName, r.gutType, r.mainTension, r.crossTension,
+    r.shop, r.gutPrice ?? 0, r.stringingFee ?? 0, recordCost(r), r.rating ?? '', r.notes,
+  ]);
+  const date = new Date().toISOString().slice(0, 10);
+  downloadText(`tennis-gut-tracker-stringing-${date}.csv`, toCsv(headers, rows), 'text/csv;charset=utf-8');
+}
+
+// 練習記録をCSVで書き出す
+export function downloadPracticeCsv() {
+  const nameOf = racketNamer();
+  const sessions = [...practiceStorage.getAll()].sort((a, b) => a.date.localeCompare(b.date));
+  const headers = ['日付', 'ラケット', '練習時間(分)', 'テンション体感', 'メモ'];
+  const rows = sessions.map((s) => [
+    s.date, nameOf(s.racketId), s.durationMinutes, tensionFeelLabel(s.tensionFeel) ?? '', s.notes,
+  ]);
+  const date = new Date().toISOString().slice(0, 10);
+  downloadText(`tennis-gut-tracker-practice-${date}.csv`, toCsv(headers, rows), 'text/csv;charset=utf-8');
 }
 
 export interface ImportResult {

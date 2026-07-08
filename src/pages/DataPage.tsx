@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { downloadBackup, importBackup, type ImportResult } from '../lib/backup';
+import { downloadBackup, downloadStringingCsv, downloadPracticeCsv, importBackup, type ImportResult } from '../lib/backup';
 
 export default function DataPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +48,27 @@ export default function DataPage() {
         >
           バックアップを書き出す
         </button>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-xl font-bold">CSVで書き出す</h2>
+        <p className="mb-3 text-sm text-gray-600">
+          記録をCSVファイルで書き出せます。Excelやスプレッドシートで開いて自由に集計・保管できます。
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { downloadStringingCsv(); setMessage({ type: 'ok', text: '張り替え記録をCSVで書き出しました。' }); }}
+            className="rounded border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          >
+            張り替え記録CSV
+          </button>
+          <button
+            onClick={() => { downloadPracticeCsv(); setMessage({ type: 'ok', text: '練習記録をCSVで書き出しました。' }); }}
+            className="rounded border border-emerald-700 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          >
+            練習記録CSV
+          </button>
+        </div>
       </section>
 
       <section>

@@ -1,7 +1,8 @@
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
-import { practiceByMonth, gutUsage, costStats, formatMinutes } from '../lib/stats';
+import { practiceByMonth, gutUsage, gutComparison, costStats, monthlySummary, formatMinutes } from '../lib/stats';
 import { formatYen } from '../lib/cost';
+import { todayISO } from '../lib/date';
 
 export default function StatsPage() {
   const { records } = useStringingRecords();
@@ -9,12 +10,28 @@ export default function StatsPage() {
 
   const monthly = practiceByMonth(sessions);
   const usage = gutUsage(records, sessions);
+  const comparison = gutComparison(records, sessions);
   const cost = costStats(records, sessions);
+  const thisMonth = monthlySummary(sessions, todayISO());
 
   const totalMinutes = sessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+  const monthDiff = thisMonth.minutes - thisMonth.prevMinutes;
 
   return (
     <div className="space-y-8">
+      <section>
+        <h2 className="mb-3 text-xl font-bold">今月の練習</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard label="今月の練習時間" value={formatMinutes(thisMonth.minutes)} sub={`${thisMonth.month.replace('-', '年')}月`} />
+          <StatCard label="今月の練習回数" value={`${thisMonth.count}回`} />
+          <StatCard
+            label="先月との差"
+            value={monthDiff === 0 ? '±0分' : `${monthDiff > 0 ? '+' : '−'}${formatMinutes(Math.abs(monthDiff))}`}
+            sub={`先月 ${formatMinutes(thisMonth.prevMinutes)}`}
+          />
+        </div>
+      </section>
+
       <section>
         <h2 className="mb-1 text-xl font-bold">月別の練習時間</h2>
         <p className="mb-3 text-sm text-gray-500">累計 {formatMinutes(totalMinutes)}（全 {sessions.length} 回）</p>
@@ -53,6 +70,19 @@ export default function StatsPage() {
           <p className="text-sm text-gray-500">まだ張り替え記録がありません。</p>
         ) : (
           <GutUsageChart data={usage} />
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-xl font-bold">ガット比較</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          打感・持ち（1回あたりの使用時間）・コスパ（1時間あたり費用）を並べて比較します。各項目の一番良い値を
+          <span className="font-medium text-emerald-700">緑色</span>で示します。
+        </p>
+        {comparison.length < 2 ? (
+          <p className="text-sm text-gray-500">2種類以上のガットを記録すると比較できます。</p>
+        ) : (
+          <GutComparisonTable data={comparison} />
         )}
       </section>
     </div>
@@ -105,6 +135,60 @@ function MonthlyChart({ data }: { data: { month: string; minutes: number }[] }) 
           );
         })}
       </svg>
+    </div>
+  );
+}
+
+function GutComparisonTable({
+  data,
+}: {
+  data: {
+    gutName: string;
+    count: number;
+    avgRating: number | null;
+    hoursPerStringing: number;
+    costPerHour: number | null;
+  }[];
+}) {
+  // 各項目の「一番良い値」を求める（打感★=高いほど良い / 持ち=長いほど良い / コスパ=安いほど良い）
+  const ratings = data.map((d) => d.avgRating).filter((v): v is number => v !== null);
+  const bestRating = ratings.length ? Math.max(...ratings) : null;
+  const bestHours = Math.max(...data.map((d) => d.hoursPerStringing));
+  const costs = data.map((d) => d.costPerHour).filter((v): v is number => v !== null);
+  const bestCost = costs.length ? Math.min(...costs) : null;
+
+  const best = 'font-bold text-emerald-700';
+
+  return (
+    <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+      <table className="w-full min-w-[480px] text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
+            <th className="px-3 py-2 font-medium">ガット名</th>
+            <th className="px-3 py-2 text-right font-medium">張替回数</th>
+            <th className="px-3 py-2 text-right font-medium">打感★</th>
+            <th className="px-3 py-2 text-right font-medium">持ち（1回あたり）</th>
+            <th className="px-3 py-2 text-right font-medium">コスパ（¥/時間）</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.gutName} className="border-b border-gray-100 last:border-0">
+              <td className="px-3 py-2 font-medium">{d.gutName}</td>
+              <td className="px-3 py-2 text-right text-gray-600">{d.count}回</td>
+              <td className={`px-3 py-2 text-right ${d.avgRating !== null && d.avgRating === bestRating ? best : 'text-gray-600'}`}>
+                {d.avgRating !== null ? `★${d.avgRating.toFixed(1)}` : '—'}
+              </td>
+              <td className={`px-3 py-2 text-right ${d.hoursPerStringing > 0 && d.hoursPerStringing === bestHours ? best : 'text-gray-600'}`}>
+                {d.hoursPerStringing > 0 ? `${d.hoursPerStringing.toFixed(1)}時間` : '—'}
+              </td>
+              <td className={`px-3 py-2 text-right ${d.costPerHour !== null && d.costPerHour === bestCost ? best : 'text-gray-600'}`}>
+                {d.costPerHour !== null ? formatYen(d.costPerHour) : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
