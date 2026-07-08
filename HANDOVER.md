@@ -4,7 +4,7 @@
 
 - **公開URL**: https://yuichi0306.github.io/tennis-gut-tracker/
 - **リポジトリ**: https://github.com/yuichi0306/tennis-gut-tracker （パブリック）
-- **最終更新**: 2026-07-07
+- **最終更新**: 2026-07-09
 
 ---
 
@@ -15,6 +15,7 @@
 - データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
 - **Googleログインすると端末間でリアルタイム同期**（Firebase / Firestore）。スマホとPCで同じデータを見られる。
 - **PWA対応**。スマホの「ホーム画面に追加」でアプリのように起動でき、オフラインでも動く。
+- **ライト／ダークの表示テーマ**に対応（ヘッダーのトグルで切替、OS設定に自動追従）。
 
 ---
 
@@ -58,8 +59,8 @@ npm run lint         # oxlint
 ```
 src/
   main.tsx                 エントリ。BrowserRouter + DataProvider でラップ
-  App.tsx                  ヘッダー・タブナビ・ルート定義・起動時通知/バッジ
-  index.css                Tailwind 読み込み
+  App.tsx                  ヘッダー・タブナビ・ルート定義・起動時通知/バッジ・テーマトグル配置
+  index.css                デザインシステム（フォント/背景/フォーカス/入力欄の共通スタイル・ダークモード定義）
   types/index.ts           型定義（Racket, StringingRecord, PracticeSession, TensionFeel, RestringSettings ほか）
   context/
     DataContext.tsx        全データ＋認証＋同期の中枢（各hookはここを参照）
@@ -75,6 +76,7 @@ src/
     notify.ts              ブラウザ通知・アプリアイコンバッジ
     firebase.ts            Firebase 初期化・設定（apiKey もここ）
     cloud.ts               Firestore 入出力（users/{uid} の read/write/購読）
+    theme.ts               表示テーマ（ライト/ダーク）の解決・保存・適用
   hooks/
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useStringingRecords.ts 張り替え記録のCRUD
@@ -83,16 +85,17 @@ src/
     useRestringSummary.ts  全ラケットの overdue/warning 集計（通知・バッジ用）
   components/
     AuthBar.tsx            ヘッダーのログイン/同期状態UI
+    ThemeToggle.tsx        ヘッダーのライト/ダーク切替ボタン
     StarRating.tsx         ★評価の入力/表示
     HistoryFilter.tsx      履歴の絞り込みバー（共通）
   pages/
     DashboardPage.tsx      張り替え時期の状況一覧・要張り替えサマリー・通知オン
     RacketsPage.tsx        ラケット管理（詳細/タイムラインへのリンク）
     RacketDetailPage.tsx   ラケット詳細（テンション推移・タイムライン）。ルート /racket/:id
-    StringingPage.tsx      ガット張り替え記録（追加・編集・削除・絞り込み）
+    StringingPage.tsx      ガット張り替え記録（追加・編集・削除・絞り込み・ガット名/張り場所のサジェスト）
     PracticePage.tsx       練習記録（追加・編集・削除・体感・絞り込み）
-    StatsPage.tsx          統計（自前SVGの棒グラフ・コスト・ガット別）
-    DataPage.tsx           バックアップ/復元
+    StatsPage.tsx          統計（今月サマリー・月別棒グラフ・コスト・ガット別・ガット比較）
+    DataPage.tsx           バックアップ/復元・CSVエクスポート
     SettingsPage.tsx       ガット種類別の張り替え基準の設定
 firestore.rules            Firestore セキュリティルール（本人のみ読み書き可）
 public/
@@ -121,6 +124,8 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 - `tennis-tracker:settings`
 - `tennis-tracker:owner`（ローカルデータの持ち主uid：同期用）
 - `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
+- `tennis-tracker:theme`（表示テーマ `light`/`dark`。未設定ならOS設定に追従）
+- `tennis-tracker:restring-banner-dismissed`（要張り替えサマリーバナーを閉じた時の状況署名）
 
 未ログイン時のデータは端末・ブラウザごとに独立。**Googleログインすると端末間で同期**される（6.1参照）。ログインしない場合は「データ」タブでJSONを書き出し／読み込みして移行する。
 
@@ -205,6 +210,36 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 
 ---
 
+## 6.7 入力候補（サジェスト）
+
+- 張り替え記録フォームの **ガット名・張った場所** に、過去の記録からの入力候補を表示（使用回数の多い順）。
+- 実装は `src/pages/StringingPage.tsx` の `suggestionsFrom()`＋ネイティブ `<datalist>`。依存追加なし・オフラインでも動作。
+
+---
+
+## 6.8 今月の練習サマリー／ガット比較（統計）
+
+- **今月の練習**：今月の練習時間・回数・先月との差を統計ページ上部に表示。`src/lib/stats.ts` の `monthlySummary(sessions, todayISO())`。
+- **ガット比較**：打感★・持ち（1回の張り替えあたり平均使用時間）・コスパ（¥/時間）を表で並べ、各項目のベスト値を緑で強調。`src/lib/stats.ts` の `gutComparison`（`gutUsage` に `hoursPerStringing`/`costPerHour` を追加）。
+
+---
+
+## 6.9 CSVエクスポート
+
+- 「データ」タブから **張り替え記録／練習記録をCSVで書き出し**。`src/lib/backup.ts` の `downloadStringingCsv` / `downloadPracticeCsv`。
+- Excelで日本語が化けないよう **UTF-8 BOM付き**、カンマ・改行・引用符はエスケープ（`toCsv`/`csvEscape`）。
+
+---
+
+## 6.10 デザインシステム／ダークモード
+
+- `src/index.css` にデザインシステムを集約：フォントスタック、キャンバス背景、見出し字間、**全フォーム/ボタン共通のフォーカスリング・入力欄の角丸**（`@layer` 外のプレーンCSSでユーティリティに優先させている）。
+- カードは `rounded-xl`＋ソフトシャドウで統一。ヘッダーはスティッキーなグラデーション＋ピル型ナビ。
+- **ダークモード**：`@custom-variant dark` で `<html data-theme="dark">` を基準にしたクラスベース切替。ヘッダーの `ThemeToggle`（`src/components/ThemeToggle.tsx` / `src/lib/theme.ts`）で切替、保存値がなければOS設定に追従。**`index.html` のインラインスクリプトが描画前にテーマを確定**してちらつきを防止。ヘッダーは両テーマ共通でエメラルド。
+- 要張り替えサマリーバナーは **✕で閉じられる**（`tennis-tracker:restring-banner-dismissed`。本数が変わると再表示）。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。
@@ -239,8 +274,10 @@ git push origin main          # → 自動でビルド・デプロイ
 
 - バックグラウンドのプッシュ通知（開いていなくても届く。要 FCM＋Cloud Functions ＝ 有料枠）
 - ネイティブアプリ化（Capacitor等でApp Store / Google Play配信）
-- 記録のCSVエクスポート、月間/年間のレポート
+- ガット寿命の予測表示（直近の練習ペースから「あと何日で張り替え時期か」を予測）
+- 最適テンション分析（テンション体感×実テンション値の相関）
+- 月間/年間のまとめレポート
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード
 ```
