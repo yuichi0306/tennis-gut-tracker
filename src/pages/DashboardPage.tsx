@@ -8,6 +8,8 @@ import { useRestringSummary } from '../hooks/useRestringSummary';
 import { getRestringInfo, type RestringStatus } from '../lib/restring';
 import { canNotify, notifyPermission, requestNotifyPermission } from '../lib/notify';
 
+const BANNER_DISMISS_KEY = 'tennis-tracker:restring-banner-dismissed';
+
 const statusStyles: Record<RestringStatus, { label: string; className: string }> = {
   'no-record': { label: '張り替え記録なし', className: 'bg-gray-100 text-gray-600 border-gray-300' },
   ok: { label: '問題なし', className: 'bg-green-50 text-green-700 border-green-300' },
@@ -22,6 +24,18 @@ export default function DashboardPage() {
   const { settings } = useSettings();
   const summary = useRestringSummary();
   const [permission, setPermission] = useState<NotificationPermission>(notifyPermission());
+
+  // 要張り替えバナー：本数の状況を署名にし、閉じた状況と一致する間は非表示にする
+  const alertSignature = `${summary.overdue}-${summary.warning}`;
+  const [dismissedSignature, setDismissedSignature] = useState<string | null>(
+    () => localStorage.getItem(BANNER_DISMISS_KEY),
+  );
+  const showBanner = (summary.overdue > 0 || summary.warning > 0) && dismissedSignature !== alertSignature;
+
+  function dismissBanner() {
+    localStorage.setItem(BANNER_DISMISS_KEY, alertSignature);
+    setDismissedSignature(alertSignature);
+  }
 
   async function enableNotifications() {
     const result = await requestNotifyPermission();
@@ -43,8 +57,8 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold">張り替え時期の状況</h2>
 
-      {(summary.overdue > 0 || summary.warning > 0) && (
-        <div className="rounded border border-gray-200 bg-white p-3 text-sm">
+      {showBanner && (
+        <div className="flex items-start justify-between gap-2 rounded border border-gray-200 bg-white p-3 text-sm">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {summary.overdue > 0 && (
               <span className="font-semibold text-red-700">🔴 張り替え推奨 {summary.overdue}本</span>
@@ -53,6 +67,14 @@ export default function DashboardPage() {
               <span className="font-semibold text-amber-700">🟡 そろそろ {summary.warning}本</span>
             )}
           </div>
+          <button
+            onClick={dismissBanner}
+            aria-label="このお知らせを閉じる"
+            title="確認しました（閉じる）"
+            className="shrink-0 rounded px-2 leading-none text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            ✕
+          </button>
         </div>
       )}
 
