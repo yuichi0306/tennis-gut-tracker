@@ -11,6 +11,7 @@ import StatsPage from './pages/StatsPage';
 import DataPage from './pages/DataPage';
 import SettingsPage from './pages/SettingsPage';
 import ManualPage from './pages/ManualPage';
+import MatchmakerPage from './pages/MatchmakerPage';
 import AuthBar from './components/AuthBar';
 import ThemeToggle from './components/ThemeToggle';
 
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/stringing', label: 'ガット張り替え' },
   { to: '/practice', label: '練習記録' },
   { to: '/stats', label: '統計' },
+  { to: '/matchmaker', label: '対戦表' },
   { to: '/data', label: 'データ' },
   { to: '/settings', label: '設定' },
 ];
@@ -100,6 +102,7 @@ function App() {
           <Route path="/stringing" element={<StringingPage />} />
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="/matchmaker" element={<MatchmakerPage />} />
           <Route path="/data" element={<DataPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/manual" element={<ManualPage />} />

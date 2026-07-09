@@ -77,6 +77,8 @@ src/
     firebase.ts            Firebase 初期化・設定（apiKey もここ）
     cloud.ts               Firestore 入出力（users/{uid} の read/write/購読）
     theme.ts               表示テーマ（ライト/ダーク）の解決・保存・適用
+    matchmaker.ts          対戦表の自動生成（ダブルス/シングルス・ラウンド生成/追加）
+    roster.ts              対戦表の参加者名簿（この端末のみ保存）
   hooks/
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useStringingRecords.ts 張り替え記録のCRUD
@@ -97,6 +99,7 @@ src/
     StatsPage.tsx          統計（今月サマリー・月別棒グラフ・コスト・ガット別・ガット比較）
     DataPage.tsx           バックアップ/復元・CSVエクスポート
     SettingsPage.tsx       ガット種類別の張り替え基準の設定
+    MatchmakerPage.tsx     対戦表（参加者・コート数・ラウンド数から自動生成）。ルート /matchmaker
     ManualPage.tsx         使い方マニュアル（ルート /manual。ヘッダー右上「使い方」ボタンから）
 firestore.rules            Firestore セキュリティルール（本人のみ読み書き可）
 public/
@@ -127,6 +130,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 - `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
 - `tennis-tracker:theme`（表示テーマ `light`/`dark`。未設定ならOS設定に追従）
 - `tennis-tracker:restring-banner-dismissed`（要張り替えサマリーバナーを閉じた時の状況署名）
+- `tennis-tracker:roster`（対戦表の参加者名簿。この端末のみ・同期しない）
 
 未ログイン時のデータは端末・ブラウザごとに独立。**Googleログインすると端末間で同期**される（6.1参照）。ログインしない場合は「データ」タブでJSONを書き出し／読み込みして移行する。
 
@@ -241,6 +245,17 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 
 ---
 
+## 6.11 対戦表（自動生成）
+
+- 「対戦表」タブ（ルート `/matchmaker`）。集まったメンバーの**ダブルス／シングルスの対戦を自動で振り分ける**ツール。ガット/練習の記録とは独立。
+- 実装：`src/lib/matchmaker.ts`（生成ロジック）／`src/lib/roster.ts`（名簿の保存）／`src/pages/MatchmakerPage.tsx`（画面）。
+- 入力：参加者（名簿から選択・その場で追加）／コート数／ラウンド数。出力：ラウンドごとの「コート・対戦・休憩」＋各自の試合数。
+- アルゴリズム：ランダム再試行つきの貪欲法。**試合数を均等化**（試合数が多い人を優先して休憩）し、**同じ相手とのペア・対戦の重複を最小化**（`WEIGHT.partner`／`opponent`）。
+- **「ラウンド追加」**は過去のラウンドを固定したまま累積カウントを引き継いで次のラウンドを生成（`extendSchedule`）。「再生成」は全体を作り直し。
+- 名簿は `tennis-tracker:roster` にこの端末のみ保存（同期しない）。出力は現状テキストコピーのみ（印刷/CSVは今後）。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。
@@ -280,5 +295,5 @@ git push origin main          # → 自動でビルド・デプロイ
 - 月間/年間のまとめレポート
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成
 ```
