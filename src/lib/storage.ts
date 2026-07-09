@@ -1,4 +1,4 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer } from '../types';
 import { resolveSettings } from './settings';
 
 const KEYS = {
@@ -6,6 +6,7 @@ const KEYS = {
   stringingRecords: 'tennis-tracker:stringing-records',
   practiceSessions: 'tennis-tracker:practice-sessions',
   settings: 'tennis-tracker:settings',
+  roster: 'tennis-tracker:roster', // 対戦表の参加者名簿
   owner: 'tennis-tracker:owner', // このブラウザのローカルデータの持ち主(uid)
   pendingReplace: 'tennis-tracker:pending-replace', // 復元直後、クラウドを置き換えるフラグ
 } as const;
@@ -37,6 +38,12 @@ export const stringingStorage = {
 export const practiceStorage = {
   getAll: (): PracticeSession[] => load<PracticeSession>(KEYS.practiceSessions),
   save: (items: PracticeSession[]) => save(KEYS.practiceSessions, items),
+};
+
+export const rosterStorage = {
+  getAll: (): RosterPlayer[] =>
+    load<RosterPlayer>(KEYS.roster).filter((p) => p && typeof p.id === 'string' && typeof p.name === 'string'),
+  save: (items: RosterPlayer[]) => save(KEYS.roster, items),
 };
 
 export const settingsStorage = {

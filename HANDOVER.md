@@ -78,7 +78,6 @@ src/
     cloud.ts               Firestore 入出力（users/{uid} の read/write/購読）
     theme.ts               表示テーマ（ライト/ダーク）の解決・保存・適用
     matchmaker.ts          対戦表の自動生成（ダブルス/シングルス・ラウンド生成/追加）
-    roster.ts              対戦表の参加者名簿（この端末のみ保存）
   hooks/
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useStringingRecords.ts 張り替え記録のCRUD
@@ -130,7 +129,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 - `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
 - `tennis-tracker:theme`（表示テーマ `light`/`dark`。未設定ならOS設定に追従）
 - `tennis-tracker:restring-banner-dismissed`（要張り替えサマリーバナーを閉じた時の状況署名）
-- `tennis-tracker:roster`（対戦表の参加者名簿。この端末のみ・同期しない）
+- `tennis-tracker:roster`（対戦表の参加者名簿。他データと同じく端末間同期・バックアップ対象）
 
 未ログイン時のデータは端末・ブラウザごとに独立。**Googleログインすると端末間で同期**される（6.1参照）。ログインしない場合は「データ」タブでJSONを書き出し／読み込みして移行する。
 
@@ -252,7 +251,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 - 入力：参加者（名簿から選択・その場で追加）／コート数／ラウンド数。出力：ラウンドごとの「コート・対戦・休憩」＋各自の試合数。
 - アルゴリズム：ランダム再試行つきの貪欲法。**試合数を均等化**（試合数が多い人を優先して休憩）し、**同じ相手とのペア・対戦の重複を最小化**（`WEIGHT.partner`／`opponent`）。
 - **「ラウンド追加」**は過去のラウンドを固定したまま累積カウントを引き継いで次のラウンドを生成（`extendSchedule`）。「再生成」は全体を作り直し。
-- 名簿は `tennis-tracker:roster` にこの端末のみ保存（同期しない）。出力は現状テキストコピーのみ（印刷/CSVは今後）。
+- 名簿（`tennis-tracker:roster`）は他データと同じく `DataContext` 経由で管理し、**端末間同期・バックアップ/復元の対象**（`CloudData.roster`／`BackupData.roster`）。`MatchmakerPage` は `useData().roster` / `setRoster` を使う。出力は現状テキストコピーのみ（印刷/CSVは今後）。
 
 ---
 

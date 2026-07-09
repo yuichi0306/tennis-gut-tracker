@@ -9,9 +9,9 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { readCloud, writeCloud, subscribeCloud, type CloudData } from '../lib/cloud';
-import { racketStorage, stringingStorage, practiceStorage, settingsStorage, syncMeta } from '../lib/storage';
+import { racketStorage, stringingStorage, practiceStorage, settingsStorage, rosterStorage, syncMeta } from '../lib/storage';
 import { DEFAULT_SETTINGS } from '../lib/settings';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer } from '../types';
 
 type LocalData = Omit<CloudData, 'updatedAt'>;
 type Updater<T> = (prev: T) => T;
@@ -22,10 +22,12 @@ interface DataContextValue {
   stringingRecords: StringingRecord[];
   practiceSessions: PracticeSession[];
   settings: RestringSettings;
+  roster: RosterPlayer[];
   setRackets: (updater: Updater<Racket[]>) => void;
   setStringingRecords: (updater: Updater<StringingRecord[]>) => void;
   setPracticeSessions: (updater: Updater<PracticeSession[]>) => void;
   setSettings: (updater: Updater<RestringSettings>) => void;
+  setRoster: (updater: Updater<RosterPlayer[]>) => void;
   // 認証・同期
   user: User | null;
   authReady: boolean;
@@ -50,6 +52,7 @@ function mergeLocalAndCloud(local: LocalData, cloud: LocalData): LocalData {
     rackets: mergeById(local.rackets, cloud.rackets),
     stringingRecords: mergeById(local.stringingRecords, cloud.stringingRecords),
     practiceSessions: mergeById(local.practiceSessions, cloud.practiceSessions),
+    roster: mergeById(local.roster, cloud.roster),
     // 設定はクラウド側を優先（無ければローカル）
     settings: cloud.settings ?? local.settings,
   };
@@ -60,6 +63,7 @@ const EMPTY_DATA: LocalData = {
   stringingRecords: [],
   practiceSessions: [],
   settings: DEFAULT_SETTINGS,
+  roster: [],
 };
 
 // ログイン時にローカルとクラウドをどう統合するかを決める。
@@ -80,6 +84,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [stringingRecords, setStringingState] = useState<StringingRecord[]>([]);
   const [practiceSessions, setPracticeState] = useState<PracticeSession[]>([]);
   const [settings, setSettingsState] = useState<RestringSettings>(DEFAULT_SETTINGS);
+  const [roster, setRosterState] = useState<RosterPlayer[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -90,9 +95,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     stringingRecords: [],
     practiceSessions: [],
     settings: DEFAULT_SETTINGS,
+    roster: [],
   });
   useEffect(() => {
-    dataRef.current = { rackets, stringingRecords, practiceSessions, settings };
+    dataRef.current = { rackets, stringingRecords, practiceSessions, settings, roster };
   });
 
   // 起動時にローカルから読み込む（未ログイン・オフラインでもそのまま動く）
@@ -101,6 +107,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setStringingState(stringingStorage.getAll());
     setPracticeState(practiceStorage.getAll());
     setSettingsState(settingsStorage.get());
+    setRosterState(rosterStorage.getAll());
   }, []);
 
   // クラウドから来たデータを画面とローカルに反映する（クラウドへは書き戻さない）
@@ -109,10 +116,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setStringingState(d.stringingRecords);
     setPracticeState(d.practiceSessions);
     setSettingsState(d.settings);
+    setRosterState(d.roster);
     racketStorage.save(d.rackets);
     stringingStorage.save(d.stringingRecords);
     practiceStorage.save(d.practiceSessions);
     settingsStorage.save(d.settings);
+    rosterStorage.save(d.roster);
   }
 
   // ローカル変更をクラウドへ反映する（ログイン中のみ）
@@ -196,6 +205,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       pushCloud({ settings: next });
       return next;
     });
+  const setRoster = (updater: Updater<RosterPlayer[]>) =>
+    setRosterState((prev) => {
+      const next = updater(prev);
+      rosterStorage.save(next);
+      pushCloud({ roster: next });
+      return next;
+    });
 
   async function signIn() {
     // まずポップアップ。モバイルのPWA等でポップアップが使えない場合はリダイレクトへ切替。
@@ -221,10 +237,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         stringingRecords,
         practiceSessions,
         settings,
+        roster,
         setRackets,
         setStringingRecords,
         setPracticeSessions,
         setSettings,
+        setRoster,
         user,
         authReady,
         syncing,

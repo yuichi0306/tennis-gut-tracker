@@ -47,3 +47,9 @@ export interface GutThreshold {
 export interface RestringSettings {
   thresholds: Record<GutType, GutThreshold>;
 }
+
+// 対戦表の参加者名簿
+export interface RosterPlayer {
+  id: string;
+  name: string;
+}

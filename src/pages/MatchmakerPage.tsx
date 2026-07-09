@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { loadRoster, saveRoster, type RosterPlayer } from '../lib/roster';
+import { useMemo, useState } from 'react';
+import { useData } from '../context/DataContext';
+import type { RosterPlayer } from '../types';
 import {
   generateSchedule,
   extendSchedule,
@@ -11,7 +12,7 @@ import {
 } from '../lib/matchmaker';
 
 export default function MatchmakerPage() {
-  const [roster, setRoster] = useState<RosterPlayer[]>(() => loadRoster());
+  const { roster, setRoster } = useData();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newName, setNewName] = useState('');
   const [mode, setMode] = useState<MatchMode>('doubles');
@@ -19,11 +20,6 @@ export default function MatchmakerPage() {
   const [rounds, setRounds] = useState('4');
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [copied, setCopied] = useState(false);
-
-  // 名簿はこの端末に保存
-  useEffect(() => {
-    saveRoster(roster);
-  }, [roster]);
 
   const nameMap = useMemo(() => {
     const m = new Map<string, string>();

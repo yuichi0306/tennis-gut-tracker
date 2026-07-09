@@ -1,5 +1,5 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
-import { racketStorage, stringingStorage, practiceStorage, settingsStorage, syncMeta } from './storage';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer } from '../types';
+import { racketStorage, stringingStorage, practiceStorage, settingsStorage, rosterStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
 import { recordCost } from './cost';
 import { tensionFeelLabel } from './tensionFeel';
@@ -12,6 +12,7 @@ export interface BackupData {
   stringingRecords: StringingRecord[];
   practiceSessions: PracticeSession[];
   settings?: RestringSettings;
+  roster?: RosterPlayer[];
 }
 
 // 現在の全データをバックアップ用オブジェクトにまとめる
@@ -24,6 +25,7 @@ export function buildBackup(): BackupData {
     stringingRecords: stringingStorage.getAll(),
     practiceSessions: practiceStorage.getAll(),
     settings: settingsStorage.get(),
+    roster: rosterStorage.getAll(),
   };
 }
 
@@ -128,10 +130,12 @@ export function importBackup(jsonText: string): ImportResult {
   const rackets = asRecordArray<Racket>(obj.rackets);
   const stringingRecords = asRecordArray<StringingRecord>(obj.stringingRecords);
   const practiceSessions = asRecordArray<PracticeSession>(obj.practiceSessions);
+  const roster = asRecordArray<RosterPlayer>(obj.roster);
 
   racketStorage.save(rackets);
   stringingStorage.save(stringingRecords);
   practiceStorage.save(practiceSessions);
+  rosterStorage.save(roster);
 
   // 設定は任意項目。含まれていれば正規化して取り込む（不正値は既定値で補完）
   if (obj.settings && typeof obj.settings === 'object') {

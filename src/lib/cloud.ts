@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { resolveSettings } from './settings';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
 // users/{uid} の1ドキュメントに全データをまとめて保存する。
@@ -10,6 +10,7 @@ export interface CloudData {
   stringingRecords: StringingRecord[];
   practiceSessions: PracticeSession[];
   settings: RestringSettings;
+  roster: RosterPlayer[];
   updatedAt: number; // 最終更新時刻(ms)
 }
 
@@ -25,6 +26,7 @@ function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'update
     stringingRecords: arr<StringingRecord>(raw?.stringingRecords),
     practiceSessions: arr<PracticeSession>(raw?.practiceSessions),
     settings: resolveSettings(raw?.settings),
+    roster: arr<RosterPlayer>(raw?.roster),
   };
 }
 
