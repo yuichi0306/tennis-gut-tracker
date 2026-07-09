@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { useRestringSummary } from './hooks/useRestringSummary';
 import { setAppBadge, notifyRestring, notifyPermission } from './lib/notify';
 import DashboardPage from './pages/DashboardPage';
@@ -10,6 +10,7 @@ import PracticePage from './pages/PracticePage';
 import StatsPage from './pages/StatsPage';
 import DataPage from './pages/DataPage';
 import SettingsPage from './pages/SettingsPage';
+import ManualPage from './pages/ManualPage';
 import AuthBar from './components/AuthBar';
 import ThemeToggle from './components/ThemeToggle';
 
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/data', label: 'データ' },
   { to: '/settings', label: '設定' },
 ];
+// マニュアル(/manual)はタブには出さず、ヘッダー右上の「使い方」ボタンから開く。
 
 function App() {
   const summary = useRestringSummary();
@@ -51,6 +53,14 @@ function App() {
           <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
             <AuthBar />
+            <Link
+              to="/manual"
+              aria-label="使い方（マニュアル）"
+              title="使い方（マニュアル）"
+              className="flex shrink-0 items-center justify-center rounded-lg border border-white/40 px-2 py-1.5 text-sm font-semibold leading-none text-white/90 hover:bg-white/15"
+            >
+              使い方
+            </Link>
           </div>
         </div>
         <nav className="mx-auto max-w-4xl px-2">
@@ -92,6 +102,7 @@ function App() {
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/data" element={<DataPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/manual" element={<ManualPage />} />
         </Routes>
       </main>
     </div>

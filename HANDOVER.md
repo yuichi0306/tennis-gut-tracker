@@ -97,6 +97,7 @@ src/
     StatsPage.tsx          統計（今月サマリー・月別棒グラフ・コスト・ガット別・ガット比較）
     DataPage.tsx           バックアップ/復元・CSVエクスポート
     SettingsPage.tsx       ガット種類別の張り替え基準の設定
+    ManualPage.tsx         使い方マニュアル（ルート /manual。ヘッダー右上「使い方」ボタンから）
 firestore.rules            Firestore セキュリティルール（本人のみ読み書き可）
 public/
   favicon.svg / app-icon.svg          テニスボール風アイコン（SVG）
