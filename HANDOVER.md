@@ -248,7 +248,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 ## 6.11 対戦表（自動生成）
 
 - 「対戦表」タブ（ルート `/matchmaker`）。集まったメンバーの**ダブルス／シングルスの対戦を自動で振り分ける**ツール。ガット/練習の記録とは独立。
-- 実装：`src/lib/matchmaker.ts`（生成ロジック）／`src/lib/roster.ts`（名簿の保存）／`src/pages/MatchmakerPage.tsx`（画面）。
+- 実装：`src/lib/matchmaker.ts`（生成ロジック）／`src/pages/MatchmakerPage.tsx`（画面）。名簿は `src/lib/storage.ts` の `rosterStorage` と `DataContext` が担当（専用の `roster.ts` は同期統合時に廃止）。
 - 入力：参加者（名簿から選択・その場で追加）／コート数／ラウンド数。出力：ラウンドごとの「コート・対戦・休憩」＋各自の試合数。
 - アルゴリズム：ランダム再試行つきの貪欲法。**試合数を均等化**（試合数が多い人を優先して休憩）し、**同じ相手とのペア・対戦の重複を最小化**（`WEIGHT.partner`／`opponent`）。
 - **「ラウンド追加」**は過去のラウンドを固定したまま累積カウントを引き継いで次のラウンドを生成（`extendSchedule`）。「再生成」は全体を作り直し。
