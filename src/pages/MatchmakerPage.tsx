@@ -19,6 +19,8 @@ export default function MatchmakerPage() {
   const [courts, setCourts] = useState('2');
   const [rounds, setRounds] = useState('4');
   const [schedule, setSchedule] = useState<Schedule | null>(null);
+  // 生成時点の名前の控え。あとで名簿から消された人も、表示済みのラウンドでは名前が出る。
+  const [snapshotNames, setSnapshotNames] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
 
   const nameMap = useMemo(() => {
@@ -26,11 +28,15 @@ export default function MatchmakerPage() {
     roster.forEach((p) => m.set(p.id, p.name));
     return m;
   }, [roster]);
-  const nameOf = (id: string) => nameMap.get(id) ?? '(不明)';
+  const nameOf = (id: string) => nameMap.get(id) ?? snapshotNames[id] ?? '(不明)';
 
   const selectedIds = roster.filter((p) => selected.has(p.id)).map((p) => p.id);
   const need = minPlayers(mode);
   const canGenerate = selectedIds.length >= need && Number(courts) >= 1 && Number(rounds) >= 1;
+
+  // 生成後に名簿から消された人は、以降のラウンドには入れない
+  const remainingIds = schedule ? schedule.playerIds.filter((id) => nameMap.has(id)) : [];
+  const canAddRound = schedule !== null && remainingIds.length >= minPlayers(schedule.mode);
 
   function addPlayer() {
     const name = newName.trim();
@@ -66,12 +72,13 @@ export default function MatchmakerPage() {
   function generate() {
     if (!canGenerate) return;
     setSchedule(generateSchedule(selectedIds, Number(courts), mode, Number(rounds)));
+    setSnapshotNames(Object.fromEntries(selectedIds.map((id) => [id, nameOf(id)])));
     setCopied(false);
   }
 
   function addRound() {
-    if (!schedule) return;
-    setSchedule(extendSchedule(schedule, 1));
+    if (!schedule || !canAddRound) return;
+    setSchedule(extendSchedule({ ...schedule, playerIds: remainingIds }, 1));
     setCopied(false);
   }
 
@@ -210,7 +217,14 @@ export default function MatchmakerPage() {
               対戦表（{schedule.mode === 'doubles' ? 'ダブルス' : 'シングルス'}・{schedule.playerIds.length}人・コート{schedule.courts}）
             </h3>
             <button onClick={generate} className="rounded-lg border border-emerald-700 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30">再生成</button>
-            <button onClick={addRound} className="rounded-lg border border-emerald-700 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30">ラウンド追加</button>
+            <button
+              onClick={addRound}
+              disabled={!canAddRound}
+              title={canAddRound ? undefined : '参加者が足りません（名簿から削除された人は追加できません）'}
+              className="rounded-lg border border-emerald-700 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+            >
+              ラウンド追加
+            </button>
             <button onClick={copy} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
               {copied ? 'コピーしました' : 'コピー'}
             </button>

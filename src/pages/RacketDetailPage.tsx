@@ -142,8 +142,9 @@ export default function RacketDetailPage() {
 // テンション推移の折れ線グラフ（メイン=濃い緑、クロス=水色）。
 function TensionChart({ data }: { data: StringingRecord[] }) {
   const tensions = data.flatMap((d) => [d.mainTension, d.crossTension]).filter((t) => t > 0);
-  const min = Math.min(...tensions) - 2;
-  const max = Math.max(...tensions) + 2;
+  // テンション未入力（すべて0）でも Math.min(...[]) が Infinity にならないようにする
+  const min = tensions.length ? Math.min(...tensions) - 2 : 0;
+  const max = tensions.length ? Math.max(...tensions) + 2 : 10;
   const range = Math.max(max - min, 1);
 
   const stepX = 64;

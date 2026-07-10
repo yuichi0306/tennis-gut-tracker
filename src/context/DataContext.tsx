@@ -89,7 +89,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  // 最新データをイベントハンドラから参照するための ref
+  // 全データの最新値。レンダーを待たず即座に更新するので、1つのハンドラで
+  // 複数の setter を続けて呼んでも、常に最新の全体をクラウドへ書ける。
   const dataRef = useRef<LocalData>({
     rackets: [],
     stringingRecords: [],
@@ -97,21 +98,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
     settings: DEFAULT_SETTINGS,
     roster: [],
   });
-  useEffect(() => {
-    dataRef.current = { rackets, stringingRecords, practiceSessions, settings, roster };
-  });
 
   // 起動時にローカルから読み込む（未ログイン・オフラインでもそのまま動く）
   useEffect(() => {
-    setRacketsState(racketStorage.getAll());
-    setStringingState(stringingStorage.getAll());
-    setPracticeState(practiceStorage.getAll());
-    setSettingsState(settingsStorage.get());
-    setRosterState(rosterStorage.getAll());
+    const local: LocalData = {
+      rackets: racketStorage.getAll(),
+      stringingRecords: stringingStorage.getAll(),
+      practiceSessions: practiceStorage.getAll(),
+      settings: settingsStorage.get(),
+      roster: rosterStorage.getAll(),
+    };
+    dataRef.current = local;
+    setRacketsState(local.rackets);
+    setStringingState(local.stringingRecords);
+    setPracticeState(local.practiceSessions);
+    setSettingsState(local.settings);
+    setRosterState(local.roster);
   }, []);
 
   // クラウドから来たデータを画面とローカルに反映する（クラウドへは書き戻さない）
   function applyData(d: LocalData) {
+    dataRef.current = d;
     setRacketsState(d.rackets);
     setStringingState(d.stringingRecords);
     setPracticeState(d.practiceSessions);
@@ -124,12 +131,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     rosterStorage.save(d.roster);
   }
 
-  // ローカル変更をクラウドへ反映する（ログイン中のみ）
-  function pushCloud(changed: Partial<LocalData>) {
+  // 現在の全データをクラウドへ反映する（ログイン中のみ）
+  function pushCloud() {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    const full: LocalData = { ...dataRef.current, ...changed };
-    writeCloud(uid, full).catch((e) => console.error('クラウド保存に失敗:', e));
+    writeCloud(uid, dataRef.current).catch((e) => console.error('クラウド保存に失敗:', e));
   }
 
   // 認証状態の監視。リダイレクト方式でログインした場合の結果もここで拾われる。
@@ -149,24 +155,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       setSyncing(true);
+      let merged = false;
       try {
         const cloud = await readCloud(user.uid);
         const local = dataRef.current;
-        const merged = resolveOnLogin(local, cloud, user.uid);
+        const resolved = resolveOnLogin(local, cloud, user.uid);
         if (cancelled) return;
-        applyData(merged);
-        await writeCloud(user.uid, merged); // 統合結果をクラウドへ反映
+        applyData(resolved);
+        await writeCloud(user.uid, resolved); // 統合結果をクラウドへ反映
         syncMeta.setOwner(user.uid); // このローカルデータの持ち主を記録
         syncMeta.clearPendingReplace();
+        merged = true;
       } catch (e) {
         console.error('初回同期に失敗:', e);
       } finally {
         if (!cancelled) setSyncing(false);
       }
       if (cancelled) return;
+      // 統合前に購読を始めると、届いたクラウドデータで未同期のローカルデータを
+      // 上書きしてしまう。統合できた時だけ購読する。
+      if (!merged) return;
       // 以降はクラウドの変更を購読して反映（他端末の更新がここで届く）
       unsubscribe = subscribeCloud(user.uid, (remote) => {
-        if (remote) applyData(remote);
+        // 復元直後（リロード待ち）はクラウドで上書きしない。復元＝置き換えを守る。
+        if (remote && !syncMeta.isPendingReplace()) applyData(remote);
       });
     })();
 
@@ -176,42 +188,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
-  // 画面から呼ぶ setter：状態＋ローカル保存＋クラウド反映をまとめて行う
-  const setRackets = (updater: Updater<Racket[]>) =>
-    setRacketsState((prev) => {
-      const next = updater(prev);
-      racketStorage.save(next);
-      pushCloud({ rackets: next });
-      return next;
-    });
-  const setStringingRecords = (updater: Updater<StringingRecord[]>) =>
-    setStringingState((prev) => {
-      const next = updater(prev);
-      stringingStorage.save(next);
-      pushCloud({ stringingRecords: next });
-      return next;
-    });
-  const setPracticeSessions = (updater: Updater<PracticeSession[]>) =>
-    setPracticeState((prev) => {
-      const next = updater(prev);
-      practiceStorage.save(next);
-      pushCloud({ practiceSessions: next });
-      return next;
-    });
-  const setSettings = (updater: Updater<RestringSettings>) =>
-    setSettingsState((prev) => {
-      const next = updater(prev);
-      settingsStorage.save(next);
-      pushCloud({ settings: next });
-      return next;
-    });
-  const setRoster = (updater: Updater<RosterPlayer[]>) =>
-    setRosterState((prev) => {
-      const next = updater(prev);
-      rosterStorage.save(next);
-      pushCloud({ roster: next });
-      return next;
-    });
+  // 画面から呼ぶ setter：状態＋ローカル保存＋クラウド反映をまとめて行う。
+  // 直前の値は dataRef から取る（state はレンダーまで更新されないため、
+  // 1つのハンドラで setter を複数回呼んでも取りこぼさない）。
+  const setRackets = (updater: Updater<Racket[]>) => {
+    const next = updater(dataRef.current.rackets);
+    dataRef.current = { ...dataRef.current, rackets: next };
+    setRacketsState(next);
+    racketStorage.save(next);
+    pushCloud();
+  };
+  const setStringingRecords = (updater: Updater<StringingRecord[]>) => {
+    const next = updater(dataRef.current.stringingRecords);
+    dataRef.current = { ...dataRef.current, stringingRecords: next };
+    setStringingState(next);
+    stringingStorage.save(next);
+    pushCloud();
+  };
+  const setPracticeSessions = (updater: Updater<PracticeSession[]>) => {
+    const next = updater(dataRef.current.practiceSessions);
+    dataRef.current = { ...dataRef.current, practiceSessions: next };
+    setPracticeState(next);
+    practiceStorage.save(next);
+    pushCloud();
+  };
+  const setSettings = (updater: Updater<RestringSettings>) => {
+    const next = updater(dataRef.current.settings);
+    dataRef.current = { ...dataRef.current, settings: next };
+    setSettingsState(next);
+    settingsStorage.save(next);
+    pushCloud();
+  };
+  const setRoster = (updater: Updater<RosterPlayer[]>) => {
+    const next = updater(dataRef.current.roster);
+    dataRef.current = { ...dataRef.current, roster: next };
+    setRosterState(next);
+    rosterStorage.save(next);
+    pushCloud();
+  };
 
   async function signIn() {
     // まずポップアップ。モバイルのPWA等でポップアップが使えない場合はリダイレクトへ切替。
