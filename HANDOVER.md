@@ -13,6 +13,7 @@
 
 - ラケットを登録し、ガットの張り替え記録（種類・テンション・張り場所）と練習記録（時間）を残す。
 - ダッシュボードで、ガット種類ごとの基準に照らして「張り替え時期」を自動判定する。
+- **テニスシューズも登録**でき、練習記録で選んだ分だけ使用時間が積み上がり「買い替え時期」を判定する。
 - データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
 - **Googleログインすると端末間でリアルタイム同期**（Firebase / Firestore）。スマホとPCで同じデータを見られる。
 - **PWA対応**。スマホの「ホーム画面に追加」でアプリのように起動でき、オフラインでも動く。
@@ -68,7 +69,8 @@ src/
   lib/
     storage.ts             localStorage の read/write（キー定義・同期メタもここ）
     restring.ts            張り替え時期の判定ロジック
-    settings.ts            ガット種類別の基準の既定値・正規化
+    shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧
+    settings.ts            ガット種類別の基準／シューズ基準の既定値・正規化
     stats.ts               統計の集計（月別練習・ガット別使用傾向/平均★/コスト・costStats）
     backup.ts              エクスポート/インポート（バックアップ・復元）
     date.ts                ローカルTZの日付ユーティリティ（todayISO 等）
@@ -81,6 +83,7 @@ src/
     matchmaker.ts          対戦表の自動生成（ダブルス/シングルス・ラウンド生成/追加）
   hooks/
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
+    useShoes.ts            シューズのCRUD
     useStringingRecords.ts 張り替え記録のCRUD
     usePracticeSessions.ts 練習記録のCRUD
     useSettings.ts         張り替え基準の設定の読み書き
@@ -94,6 +97,7 @@ src/
     DashboardPage.tsx      張り替え時期の状況一覧・要張り替えサマリー・通知オン
     RacketsPage.tsx        ラケット管理（詳細/タイムラインへのリンク）
     RacketDetailPage.tsx   ラケット詳細（テンション推移・タイムライン）。ルート /racket/:id
+    ShoesPage.tsx          シューズ管理（登録・使用時間・買い替え判定）。ルート /shoes
     StringingPage.tsx      ガット張り替え記録（追加・編集・削除・絞り込み・ガット名/張り場所のサジェスト）
     PracticePage.tsx       練習記録（追加・編集・削除・体感・絞り込み）
     StatsPage.tsx          統計（今月サマリー・月別棒グラフ・コスト・ガット別・ガット比較）
@@ -114,15 +118,18 @@ public/
 
 ```ts
 Racket           { id, name, createdAt }
+Shoe             { id, name, purchaseDate, price, surface, notes, createdAt }  // 任意項目の未入力は ''／0（Firestoreはundefinedを保存できない）
 StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, gutPrice?, stringingFee?, rating?, notes }  // rating=打感★1〜5、gutPrice/stringingFee=費用（円）。いずれも任意
-PracticeSession  { id, racketId, date, durationMinutes, tensionFeel?, notes }  // tensionFeel='tight'|'ok'|'loose'（任意）
+PracticeSession  { id, racketId, shoeId?, date, durationMinutes, tensionFeel?, notes }  // shoeId=履いたシューズ（未選択は ''）、tensionFeel='tight'|'ok'|'loose'（任意）
 TensionFeel      'tight'（かたい/張りたて） | 'ok'（ちょうど） | 'loose'（ゆるい/へたり）
 GutType          'ポリエステル' | 'ナイロン（合成繊維）' | 'ナチュラル' | 'ハイブリッド'
-RestringSettings { thresholds: Record<GutType, { hours, days }> }
+ShoeSurface      'オールコート' | 'オムニ・クレー' | 'ハード' | 'クレー' | 'カーペット'
+RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 ```
 
 ### localStorage キー（`src/lib/storage.ts`）
 - `tennis-tracker:rackets`
+- `tennis-tracker:shoes`
 - `tennis-tracker:stringing-records`
 - `tennis-tracker:practice-sessions`
 - `tennis-tracker:settings`
@@ -256,6 +263,19 @@ RestringSettings { thresholds: Record<GutType, { hours, days }> }
 
 ---
 
+## 6.12 シューズ管理
+
+- 「シューズ」タブ（ルート `/shoes`）。シューズを登録し、**練習記録で「履いたシューズ」を選ぶと使用時間が自動で積み上がる**（二重入力なし）。
+- 実装：`src/lib/shoe.ts`（`getShoeUsage`＝使用時間・回数・状態・¥/時間、`SHOE_SURFACES`）／`src/pages/ShoesPage.tsx`／`src/hooks/useShoes.ts`。
+- 記録項目：シューズ名（必須）・購入日・価格・サーフェス・メモ（いずれも任意）。価格を入れると **1時間あたりのコスト** を表示。
+- 判定：**使用時間のみ**で行う（購入日は経過日数の表示だけに使い、判定には使わない）。基準に達したら「買い替え推奨」、`WARNING_RATIO`(80%)で「そろそろ」。
+  基準は `RestringSettings.shoeHours`（既定 `DEFAULT_SHOE_HOURS` = 80時間）。設定画面で変更可。
+- シューズを削除しても練習記録は残り、履歴・CSVでは `(削除済みシューズ)` と表示する。編集フォームでも選択が消えないよう、その旨のオプションを出す。
+- 同期・バックアップ対象（`CloudData.shoes`／`BackupData.shoes`）。**シューズ対応前のバックアップ（`shoes` なし）も復元できる**。
+- 注意：`Shoe` の任意項目は `undefined` にせず `''`／`0` を入れる。Firestore は `undefined` を保存できず `setDoc` が失敗するため。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。
@@ -293,6 +313,7 @@ git push origin main          # → 自動でビルド・デプロイ
 - ガット寿命の予測表示（直近の練習ペースから「あと何日で張り替え時期か」を予測）
 - 最適テンション分析（テンション体感×実テンション値の相関）
 - 月間/年間のまとめレポート
+- シューズの買い替えをダッシュボード／通知／バッジにも出す（現状は「シューズ」タブ内の表示のみ）
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
+import { useShoes } from '../hooks/useShoes';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import type { PracticeSession, TensionFeel } from '../types';
 import { todayISO } from '../lib/date';
@@ -8,20 +9,27 @@ import { TENSION_FEELS, tensionFeelLabel, tensionFeelClass } from '../lib/tensio
 
 export default function PracticePage() {
   const { rackets } = useRackets();
+  const { shoes } = useShoes();
   const { sessions, addSession, updateSession, deleteSession } = usePracticeSessions();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [racketId, setRacketId] = useState('');
+  const [shoeId, setShoeId] = useState('');
   const [date, setDate] = useState(todayISO());
   const [durationMinutes, setDurationMinutes] = useState('60');
   const [tensionFeel, setTensionFeel] = useState<TensionFeel | ''>('');
   const [notes, setNotes] = useState('');
 
   const racketName = (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
+  const shoeName = (id: string | undefined) => {
+    if (!id) return null;
+    return shoes.find((s) => s.id === id)?.name ?? '(削除済みシューズ)';
+  };
 
   function resetForm() {
     setEditingId(null);
     setRacketId('');
+    setShoeId('');
     setDate(todayISO());
     setDurationMinutes('60');
     setTensionFeel('');
@@ -31,6 +39,7 @@ export default function PracticePage() {
   function startEdit(s: PracticeSession) {
     setEditingId(s.id);
     setRacketId(s.racketId);
+    setShoeId(s.shoeId ?? '');
     setDate(s.date);
     setDurationMinutes(String(s.durationMinutes));
     setTensionFeel(s.tensionFeel ?? '');
@@ -43,6 +52,7 @@ export default function PracticePage() {
     if (!racketId) return;
     const payload = {
       racketId,
+      shoeId,
       date,
       durationMinutes: Number(durationMinutes),
       tensionFeel,
@@ -77,7 +87,7 @@ export default function PracticePage() {
     if (fFrom && s.date < fFrom) return false;
     if (fTo && s.date > fTo) return false;
     if (kw) {
-      const haystack = `${s.notes} ${racketName(s.racketId)}`.toLowerCase();
+      const haystack = `${s.notes} ${racketName(s.racketId)} ${shoeName(s.shoeId) ?? ''}`.toLowerCase();
       if (!haystack.includes(kw)) return false;
     }
     return true;
@@ -98,6 +108,19 @@ export default function PracticePage() {
                 {rackets.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              シューズ（任意）
+              <select value={shoeId} onChange={(e) => setShoeId(e.target.value)} className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5">
+                <option value="">未選択</option>
+                {shoes.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+                {/* 削除済みシューズを選んでいた記録を編集しても、選択が消えないようにする */}
+                {shoeId && !shoes.some((s) => s.id === shoeId) && (
+                  <option value={shoeId}>(削除済みシューズ)</option>
+                )}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -151,7 +174,7 @@ export default function PracticePage() {
               onTo={setFTo}
               keyword={fKeyword}
               onKeyword={setFKeyword}
-              keywordPlaceholder="メモ・ラケット名で検索"
+              keywordPlaceholder="メモ・ラケット名・シューズ名で検索"
               active={filterActive}
               onClear={clearFilters}
               resultCount={filteredSessions.length}
@@ -172,6 +195,9 @@ export default function PracticePage() {
                         <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tensionFeelClass(s.tensionFeel)}`}>
                           {tensionFeelLabel(s.tensionFeel)}
                         </span>
+                      )}
+                      {shoeName(s.shoeId) && (
+                        <span className="text-xs text-gray-500 dark:text-slate-400">👟 {shoeName(s.shoeId)}</span>
                       )}
                     </p>
                     {s.notes && <p className="text-gray-500 dark:text-slate-400">メモ: {s.notes}</p>}

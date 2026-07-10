@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { GUT_TYPES, DEFAULT_THRESHOLDS, WARNING_RATIO, resolveSettings } from '../lib/settings';
+import { GUT_TYPES, DEFAULT_THRESHOLDS, DEFAULT_SHOE_HOURS, WARNING_RATIO, resolveSettings } from '../lib/settings';
 import type { GutType, RestringSettings } from '../types';
 
 export default function SettingsPage() {
@@ -15,6 +15,7 @@ export default function SettingsPage() {
 
   function handleChange(gut: GutType, field: 'hours' | 'days', value: string) {
     setDraft((prev) => ({
+      ...prev,
       thresholds: {
         ...prev.thresholds,
         [gut]: { ...prev.thresholds[gut], [field]: Number(value) },
@@ -23,10 +24,16 @@ export default function SettingsPage() {
     setSaved(false);
   }
 
-  const invalid = GUT_TYPES.some((t) => {
-    const th = draft.thresholds[t];
-    return !th || th.hours < 1 || th.days < 1;
-  });
+  function handleShoeHoursChange(value: string) {
+    setDraft((prev) => ({ ...prev, shoeHours: Number(value) }));
+    setSaved(false);
+  }
+
+  const invalid =
+    GUT_TYPES.some((t) => {
+      const th = draft.thresholds[t];
+      return !th || th.hours < 1 || th.days < 1;
+    }) || !(draft.shoeHours >= 1);
 
   function handleSave() {
     if (invalid) return;
@@ -86,6 +93,25 @@ export default function SettingsPage() {
               </div>
             );
           })}
+        </div>
+
+        <h3 className="mb-1 mt-6 text-lg font-bold">シューズの買い替え設定</h3>
+        <p className="mb-3 text-sm text-gray-600 dark:text-slate-300">
+          練習記録で選んだシューズの使用時間が基準に達すると<strong>「買い替え推奨」</strong>、
+          基準の{warningPct}%で<strong>「そろそろ」</strong>と表示します。
+        </p>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <label className="flex max-w-xs flex-col gap-1 text-sm">
+            使用時間の基準（時間）
+            <input
+              type="number"
+              min="1"
+              value={draft.shoeHours || ''}
+              onChange={(e) => handleShoeHoursChange(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1.5 dark:border-slate-600"
+            />
+          </label>
+          <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">既定: {DEFAULT_SHOE_HOURS}時間（一般的な目安は50〜100時間）</p>
         </div>
 
         {invalid && (

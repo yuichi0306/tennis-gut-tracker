@@ -1,12 +1,13 @@
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { resolveSettings } from './settings';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
 // users/{uid} の1ドキュメントに全データをまとめて保存する。
 export interface CloudData {
   rackets: Racket[];
+  shoes: Shoe[];
   stringingRecords: StringingRecord[];
   practiceSessions: PracticeSession[];
   settings: RestringSettings;
@@ -23,6 +24,7 @@ function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'update
   const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   return {
     rackets: arr<Racket>(raw?.rackets),
+    shoes: arr<Shoe>(raw?.shoes),
     stringingRecords: arr<StringingRecord>(raw?.stringingRecords),
     practiceSessions: arr<PracticeSession>(raw?.practiceSessions),
     settings: resolveSettings(raw?.settings),

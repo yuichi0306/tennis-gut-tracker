@@ -1,5 +1,5 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer } from '../types';
-import { racketStorage, stringingStorage, practiceStorage, settingsStorage, rosterStorage, syncMeta } from './storage';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe } from '../types';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, settingsStorage, rosterStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
 import { recordCost } from './cost';
 import { tensionFeelLabel } from './tensionFeel';
@@ -13,6 +13,7 @@ export interface BackupData {
   practiceSessions: PracticeSession[];
   settings?: RestringSettings;
   roster?: RosterPlayer[];
+  shoes?: Shoe[]; // シューズ対応より前のバックアップには含まれない
 }
 
 // 現在の全データをバックアップ用オブジェクトにまとめる
@@ -26,6 +27,7 @@ export function buildBackup(): BackupData {
     practiceSessions: practiceStorage.getAll(),
     settings: settingsStorage.get(),
     roster: rosterStorage.getAll(),
+    shoes: shoeStorage.getAll(),
   };
 }
 
@@ -69,6 +71,15 @@ function racketNamer() {
   return (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
 }
 
+// シューズidから名前を引く関数を作る（未選択は空欄）
+function shoeNamer() {
+  const shoes = shoeStorage.getAll();
+  return (id: string | undefined) => {
+    if (!id) return '';
+    return shoes.find((s) => s.id === id)?.name ?? '(削除済みシューズ)';
+  };
+}
+
 // 張り替え記録をCSVで書き出す
 export function downloadStringingCsv() {
   const nameOf = racketNamer();
@@ -88,10 +99,11 @@ export function downloadStringingCsv() {
 // 練習記録をCSVで書き出す
 export function downloadPracticeCsv() {
   const nameOf = racketNamer();
+  const shoeNameOf = shoeNamer();
   const sessions = [...practiceStorage.getAll()].sort((a, b) => a.date.localeCompare(b.date));
-  const headers = ['日付', 'ラケット', '練習時間(分)', 'テンション体感', 'メモ'];
+  const headers = ['日付', 'ラケット', 'シューズ', '練習時間(分)', 'テンション体感', 'メモ'];
   const rows = sessions.map((s) => [
-    s.date, nameOf(s.racketId), s.durationMinutes, tensionFeelLabel(s.tensionFeel) ?? '', s.notes,
+    s.date, nameOf(s.racketId), shoeNameOf(s.shoeId), s.durationMinutes, tensionFeelLabel(s.tensionFeel) ?? '', s.notes,
   ]);
   const date = new Date().toISOString().slice(0, 10);
   downloadText(`tennis-gut-tracker-practice-${date}.csv`, toCsv(headers, rows), 'text/csv;charset=utf-8');
@@ -101,6 +113,7 @@ export interface ImportResult {
   rackets: number;
   stringingRecords: number;
   practiceSessions: number;
+  shoes: number;
 }
 
 // 配列であり、各要素にidを持つことを最低限チェックする
@@ -131,11 +144,13 @@ export function importBackup(jsonText: string): ImportResult {
   const stringingRecords = asRecordArray<StringingRecord>(obj.stringingRecords);
   const practiceSessions = asRecordArray<PracticeSession>(obj.practiceSessions);
   const roster = asRecordArray<RosterPlayer>(obj.roster);
+  const shoes = asRecordArray<Shoe>(obj.shoes);
 
   racketStorage.save(rackets);
   stringingStorage.save(stringingRecords);
   practiceStorage.save(practiceSessions);
   rosterStorage.save(roster);
+  shoeStorage.save(shoes);
 
   // 設定は任意項目。含まれていれば正規化して取り込む（不正値は既定値で補完）
   if (obj.settings && typeof obj.settings === 'object') {
@@ -149,5 +164,6 @@ export function importBackup(jsonText: string): ImportResult {
     rackets: rackets.length,
     stringingRecords: stringingRecords.length,
     practiceSessions: practiceSessions.length,
+    shoes: shoes.length,
   };
 }

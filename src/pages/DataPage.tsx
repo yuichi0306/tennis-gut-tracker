@@ -24,7 +24,7 @@ export default function DataPage() {
         const result: ImportResult = importBackup(String(reader.result));
         setMessage({
           type: 'ok',
-          text: `復元しました（ラケット${result.rackets}件・張り替え${result.stringingRecords}件・練習${result.practiceSessions}件）。画面を再読み込みします…`,
+          text: `復元しました（ラケット${result.rackets}件・シューズ${result.shoes}件・張り替え${result.stringingRecords}件・練習${result.practiceSessions}件）。画面を再読み込みします…`,
         });
         setTimeout(() => window.location.reload(), 1200);
       } catch (err) {

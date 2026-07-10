@@ -1,8 +1,9 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe } from '../types';
 import { resolveSettings } from './settings';
 
 const KEYS = {
   rackets: 'tennis-tracker:rackets',
+  shoes: 'tennis-tracker:shoes',
   stringingRecords: 'tennis-tracker:stringing-records',
   practiceSessions: 'tennis-tracker:practice-sessions',
   settings: 'tennis-tracker:settings',
@@ -28,6 +29,11 @@ function save<T>(key: string, items: T[]) {
 export const racketStorage = {
   getAll: (): Racket[] => load<Racket>(KEYS.rackets),
   save: (items: Racket[]) => save(KEYS.rackets, items),
+};
+
+export const shoeStorage = {
+  getAll: (): Shoe[] => load<Shoe>(KEYS.shoes),
+  save: (items: Shoe[]) => save(KEYS.shoes, items),
 };
 
 export const stringingStorage = {

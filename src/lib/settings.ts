@@ -16,8 +16,13 @@ export const DEFAULT_THRESHOLDS: Record<GutType, GutThreshold> = {
   'ハイブリッド': { hours: 20, days: 75 },
 };
 
+// シューズの買い替え推奨ライン（使用時間）の既定値。
+// 一般にテニスシューズのソールは50〜100時間程度が目安とされる。
+export const DEFAULT_SHOE_HOURS = 80;
+
 export const DEFAULT_SETTINGS: RestringSettings = {
   thresholds: DEFAULT_THRESHOLDS,
+  shoeHours: DEFAULT_SHOE_HOURS,
 };
 
 // 保存済みの（部分的・不正かもしれない）設定を既定値へマージして正規化する。
@@ -31,5 +36,7 @@ export function resolveSettings(stored: Partial<RestringSettings> | null | undef
     const days = s && Number.isFinite(s.days) && s.days > 0 ? s.days : def.days;
     thresholds[t] = { hours, days };
   }
-  return { thresholds };
+  const sh = stored?.shoeHours;
+  const shoeHours = Number.isFinite(sh) && (sh as number) > 0 ? (sh as number) : DEFAULT_SHOE_HOURS;
+  return { thresholds, shoeHours };
 }

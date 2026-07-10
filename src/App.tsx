@@ -5,6 +5,7 @@ import { setAppBadge, notifyRestring, notifyPermission } from './lib/notify';
 import DashboardPage from './pages/DashboardPage';
 import RacketsPage from './pages/RacketsPage';
 import RacketDetailPage from './pages/RacketDetailPage';
+import ShoesPage from './pages/ShoesPage';
 import StringingPage from './pages/StringingPage';
 import PracticePage from './pages/PracticePage';
 import StatsPage from './pages/StatsPage';
@@ -18,6 +19,7 @@ import ThemeToggle from './components/ThemeToggle';
 const navItems = [
   { to: '/', label: 'ダッシュボード', end: true },
   { to: '/rackets', label: 'ラケット' },
+  { to: '/shoes', label: 'シューズ' },
   { to: '/stringing', label: 'ガット張り替え' },
   { to: '/practice', label: '練習記録' },
   { to: '/stats', label: '統計' },
@@ -99,6 +101,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/rackets" element={<RacketsPage />} />
           <Route path="/racket/:id" element={<RacketDetailPage />} />
+          <Route path="/shoes" element={<ShoesPage />} />
           <Route path="/stringing" element={<StringingPage />} />
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/stats" element={<StatsPage />} />
