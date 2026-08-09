@@ -94,3 +94,26 @@ export interface RosterPlayer {
   id: string;
   name: string;
 }
+
+// 欲しいものリストの優先度
+export type WishPriority = 'high' | 'mid' | 'low';
+
+// 欲しいものリストの1件（テニスグッズなど）
+export interface WishItem {
+  id: string;
+  name: string;
+  price: number; // 価格の目安（円。未入力は 0）
+  priority: WishPriority;
+  bought: boolean; // 購入済みチェック
+  notes: string;
+  createdAt: string; // ISO datetime（並び順の安定用）
+}
+
+// 合宿持ち物リストの1品
+export interface PackingItem {
+  id: string;
+  name: string;
+  category: string; // カテゴリ（未設定は ''）
+  quantity: number; // 個数（1以上）
+  packed: boolean; // 準備できたチェック
+}

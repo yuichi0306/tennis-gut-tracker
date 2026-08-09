@@ -1,4 +1,4 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
 import { resolveSettings } from './settings';
 
 const KEYS = {
@@ -7,6 +7,8 @@ const KEYS = {
   stringingRecords: 'tennis-tracker:stringing-records',
   practiceSessions: 'tennis-tracker:practice-sessions',
   matches: 'tennis-tracker:matches',
+  wishlist: 'tennis-tracker:wishlist', // 欲しいものリスト
+  packing: 'tennis-tracker:packing', // 合宿持ち物リスト
   settings: 'tennis-tracker:settings',
   roster: 'tennis-tracker:roster', // 対戦表の参加者名簿
   owner: 'tennis-tracker:owner', // このブラウザのローカルデータの持ち主(uid)
@@ -50,6 +52,16 @@ export const practiceStorage = {
 export const matchStorage = {
   getAll: (): MatchRecord[] => load<MatchRecord>(KEYS.matches),
   save: (items: MatchRecord[]) => save(KEYS.matches, items),
+};
+
+export const wishlistStorage = {
+  getAll: (): WishItem[] => load<WishItem>(KEYS.wishlist),
+  save: (items: WishItem[]) => save(KEYS.wishlist, items),
+};
+
+export const packingStorage = {
+  getAll: (): PackingItem[] => load<PackingItem>(KEYS.packing),
+  save: (items: PackingItem[]) => save(KEYS.packing, items),
 };
 
 export const rosterStorage = {

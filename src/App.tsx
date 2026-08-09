@@ -9,6 +9,8 @@ import ShoesPage from './pages/ShoesPage';
 import StringingPage from './pages/StringingPage';
 import PracticePage from './pages/PracticePage';
 import MatchesPage from './pages/MatchesPage';
+import WishlistPage from './pages/WishlistPage';
+import PackingPage from './pages/PackingPage';
 import StatsPage from './pages/StatsPage';
 import DataPage from './pages/DataPage';
 import SettingsPage from './pages/SettingsPage';
@@ -26,6 +28,8 @@ const navItems = [
   { to: '/matches', label: '試合' },
   { to: '/stats', label: '統計' },
   { to: '/matchmaker', label: '対戦表' },
+  { to: '/wishlist', label: '欲しいもの' },
+  { to: '/packing', label: '持ち物' },
   { to: '/data', label: 'データ' },
   { to: '/settings', label: '設定' },
 ];
@@ -109,6 +113,8 @@ function App() {
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/matchmaker" element={<MatchmakerPage />} />
+          <Route path="/wishlist" element={<WishlistPage />} />
+          <Route path="/packing" element={<PackingPage />} />
           <Route path="/data" element={<DataPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/manual" element={<ManualPage />} />

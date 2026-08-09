@@ -1,5 +1,5 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord } from '../types';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, settingsStorage, rosterStorage, syncMeta } from './storage';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, settingsStorage, rosterStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
 import { recordCost } from './cost';
 import { tensionFeelLabel } from './tensionFeel';
@@ -16,6 +16,8 @@ export interface BackupData {
   roster?: RosterPlayer[];
   shoes?: Shoe[]; // シューズ対応より前のバックアップには含まれない
   matches?: MatchRecord[]; // 試合対応より前のバックアップには含まれない
+  wishlist?: WishItem[]; // 欲しいもの対応より前のバックアップには含まれない
+  packing?: PackingItem[]; // 持ち物対応より前のバックアップには含まれない
 }
 
 // 現在の全データをバックアップ用オブジェクトにまとめる
@@ -31,6 +33,8 @@ export function buildBackup(): BackupData {
     roster: rosterStorage.getAll(),
     shoes: shoeStorage.getAll(),
     matches: matchStorage.getAll(),
+    wishlist: wishlistStorage.getAll(),
+    packing: packingStorage.getAll(),
   };
 }
 
@@ -164,6 +168,8 @@ export function importBackup(jsonText: string): ImportResult {
   const roster = asRecordArray<RosterPlayer>(obj.roster);
   const shoes = asRecordArray<Shoe>(obj.shoes);
   const matches = asRecordArray<MatchRecord>(obj.matches);
+  const wishlist = asRecordArray<WishItem>(obj.wishlist);
+  const packing = asRecordArray<PackingItem>(obj.packing);
 
   racketStorage.save(rackets);
   stringingStorage.save(stringingRecords);
@@ -171,6 +177,8 @@ export function importBackup(jsonText: string): ImportResult {
   rosterStorage.save(roster);
   shoeStorage.save(shoes);
   matchStorage.save(matches);
+  wishlistStorage.save(wishlist);
+  packingStorage.save(packing);
 
   // 設定は任意項目。含まれていれば正規化して取り込む（不正値は既定値で補完）
   if (obj.settings && typeof obj.settings === 'object') {

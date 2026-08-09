@@ -15,6 +15,7 @@
 - ダッシュボードで、ガット種類ごとの基準に照らして「張り替え時期」を自動判定する。
 - **テニスシューズも登録**でき、練習・試合で選んだ分だけ使用時間が積み上がり「買い替え時期」を判定する。
 - **試合記録**（シングルス／ダブルス・ゲームスコア・勝敗自動判定）を残せる。試合時間はラケット・シューズの使用時間にも加算される。
+- **欲しいものリスト**（テニスグッズ）と**合宿の持ち物リスト**（定番プリセット・チェック式）も管理できる。
 - データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
 - **Googleログインすると端末間でリアルタイム同期**（Firebase / Firestore）。スマホとPCで同じデータを見られる。
 - **PWA対応**。スマホの「ホーム画面に追加」でアプリのように起動でき、オフラインでも動く。
@@ -72,6 +73,8 @@ src/
     restring.ts            張り替え時期の判定ロジック（練習＋試合の使用時間で判定）
     shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧（練習＋試合）
     match.ts               試合の勝敗判定・スコア整形・勝率集計
+    wishlist.ts            欲しいものの優先度ラベル・並び替え
+    packing.ts             合宿持ち物のカテゴリ・定番プリセット
     settings.ts            ガット種類別の基準／シューズ基準の既定値・正規化
     stats.ts               統計の集計（月別練習・ガット別使用傾向/平均★/コスト・costStats）
     backup.ts              エクスポート/インポート（バックアップ・復元）
@@ -87,6 +90,8 @@ src/
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useShoes.ts            シューズのCRUD
     useMatches.ts          試合記録のCRUD
+    useWishlist.ts         欲しいものリストのCRUD
+    usePacking.ts          持ち物リストのCRUD（一括追加・チェック一括リセット含む）
     useStringingRecords.ts 張り替え記録のCRUD
     usePracticeSessions.ts 練習記録のCRUD
     useSettings.ts         張り替え基準の設定の読み書き
@@ -102,6 +107,8 @@ src/
     RacketDetailPage.tsx   ラケット詳細（テンション推移・タイムライン）。ルート /racket/:id
     ShoesPage.tsx          シューズ管理（登録・使用時間・買い替え判定）。ルート /shoes
     MatchesPage.tsx        試合記録（シングルス/ダブルス・ゲームスコア・勝敗自動・勝率）。ルート /matches
+    WishlistPage.tsx       欲しいものリスト（優先度・価格・購入チェック）。ルート /wishlist
+    PackingPage.tsx        合宿持ち物リスト（定番プリセット・カテゴリ・チェック一括リセット）。ルート /packing
     StringingPage.tsx      ガット張り替え記録（追加・編集・削除・絞り込み・ガット名/張り場所のサジェスト）
     PracticePage.tsx       練習記録（追加・編集・削除・体感・絞り込み）
     StatsPage.tsx          統計（今月サマリー・月別棒グラフ・コスト・ガット別・ガット比較）
@@ -131,6 +138,9 @@ TensionFeel      'tight'（かたい/張りたて） | 'ok'（ちょうど） | 
 GutType          'ポリエステル' | 'ナイロン（合成繊維）' | 'ナチュラル' | 'ハイブリッド'
 ShoeSurface      'オールコート' | 'オムニ・クレー' | 'ハード' | 'クレー' | 'カーペット'
 MatchFormat      'singles' | 'doubles'
+WishItem         { id, name, price, priority, bought, notes, createdAt }  // priority='high'|'mid'|'low'、price未入力は 0
+WishPriority     'high'（高） | 'mid'（中） | 'low'（低）
+PackingItem      { id, name, category, quantity, packed }  // category未設定は ''、quantityは1以上
 RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 ```
 
@@ -140,6 +150,8 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 - `tennis-tracker:matches`
 - `tennis-tracker:stringing-records`
 - `tennis-tracker:practice-sessions`
+- `tennis-tracker:wishlist`（欲しいものリスト）
+- `tennis-tracker:packing`（合宿持ち物リスト）
 - `tennis-tracker:settings`
 - `tennis-tracker:owner`（ローカルデータの持ち主uid：同期用）
 - `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
@@ -297,6 +309,15 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 
 ---
 
+## 6.14 欲しいものリスト・合宿持ち物リスト
+
+- ガット・練習の記録とは独立した2つのチェックリスト機能。どちらも端末間同期・バックアップ対象（`CloudData` / `BackupData` の `wishlist` / `packing`）。対応前のバックアップ（項目なし）も復元可。
+- **欲しいもの**（`/wishlist`）：`src/pages/WishlistPage.tsx` / `src/hooks/useWishlist.ts` / `src/lib/wishlist.ts`。品名（必須）・価格の目安・優先度（高/中/低）・メモ。優先度順に並び、目安合計を表示。購入チェックで「購入済み」セクションへ分離（合計からも除外）。
+- **持ち物**（`/packing`）：`src/pages/PackingPage.tsx` / `src/hooks/usePacking.ts` / `src/lib/packing.ts`。定番プリセット（`PACKING_PRESET`）から一括追加でき、`addMany` は「カテゴリ+名前」が既存のものは追加しない（重複防止）。カテゴリごとに表示、個数あり、チェックで準備管理。**「チェックを一括リセット」（`resetChecks`）で次の合宿に使い回し**、「すべて削除」（`clearAll`）も可。
+- チェックリストなのでCSVは無し（バックアップJSONには含まれる）。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。
@@ -338,4 +359,4 @@ git push origin main          # → 自動でビルド・デプロイ
 - 試合の勝率・傾向を統計ページに統合（相手別・サーフェス別・月別勝率など。現状は「試合」タブ内の集計のみ）
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト
