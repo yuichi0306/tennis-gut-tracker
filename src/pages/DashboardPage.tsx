@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useRackets } from '../hooks/useRackets';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
+import { useMatches } from '../hooks/useMatches';
 import { useSettings } from '../hooks/useSettings';
 import { useRestringSummary } from '../hooks/useRestringSummary';
 import { getRestringInfo, type RestringStatus } from '../lib/restring';
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const { rackets } = useRackets();
   const { records } = useStringingRecords();
   const { sessions } = usePracticeSessions();
+  const { matches } = useMatches();
   const { settings } = useSettings();
   const summary = useRestringSummary();
   const [permission, setPermission] = useState<NotificationPermission>(notifyPermission());
@@ -99,7 +101,7 @@ export default function DashboardPage() {
 
       <ul className="space-y-3">
         {rackets.map((racket) => {
-          const info = getRestringInfo(racket.id, records, sessions, settings);
+          const info = getRestringInfo(racket.id, records, sessions, settings, matches);
           const style = statusStyles[info.status];
           return (
             <li key={racket.id} className={`rounded-xl border p-4 shadow-sm ${style.card}`}>

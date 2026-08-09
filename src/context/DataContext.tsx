@@ -9,9 +9,9 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { readCloud, writeCloud, subscribeCloud, type CloudData } from '../lib/cloud';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, settingsStorage, rosterStorage, syncMeta } from '../lib/storage';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, settingsStorage, rosterStorage, syncMeta } from '../lib/storage';
 import { DEFAULT_SETTINGS } from '../lib/settings';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord } from '../types';
 
 type LocalData = Omit<CloudData, 'updatedAt'>;
 type Updater<T> = (prev: T) => T;
@@ -22,12 +22,14 @@ interface DataContextValue {
   shoes: Shoe[];
   stringingRecords: StringingRecord[];
   practiceSessions: PracticeSession[];
+  matches: MatchRecord[];
   settings: RestringSettings;
   roster: RosterPlayer[];
   setRackets: (updater: Updater<Racket[]>) => void;
   setShoes: (updater: Updater<Shoe[]>) => void;
   setStringingRecords: (updater: Updater<StringingRecord[]>) => void;
   setPracticeSessions: (updater: Updater<PracticeSession[]>) => void;
+  setMatches: (updater: Updater<MatchRecord[]>) => void;
   setSettings: (updater: Updater<RestringSettings>) => void;
   setRoster: (updater: Updater<RosterPlayer[]>) => void;
   // 認証・同期
@@ -55,6 +57,7 @@ function mergeLocalAndCloud(local: LocalData, cloud: LocalData): LocalData {
     shoes: mergeById(local.shoes, cloud.shoes),
     stringingRecords: mergeById(local.stringingRecords, cloud.stringingRecords),
     practiceSessions: mergeById(local.practiceSessions, cloud.practiceSessions),
+    matches: mergeById(local.matches, cloud.matches),
     roster: mergeById(local.roster, cloud.roster),
     // 設定はクラウド側を優先（無ければローカル）
     settings: cloud.settings ?? local.settings,
@@ -66,6 +69,7 @@ const EMPTY_DATA: LocalData = {
   shoes: [],
   stringingRecords: [],
   practiceSessions: [],
+  matches: [],
   settings: DEFAULT_SETTINGS,
   roster: [],
 };
@@ -86,6 +90,7 @@ function resolveOnLogin(local: LocalData, cloud: LocalData | null, uid: string):
 export function DataProvider({ children }: { children: ReactNode }) {
   const [rackets, setRacketsState] = useState<Racket[]>([]);
   const [shoes, setShoesState] = useState<Shoe[]>([]);
+  const [matches, setMatchesState] = useState<MatchRecord[]>([]);
   const [stringingRecords, setStringingState] = useState<StringingRecord[]>([]);
   const [practiceSessions, setPracticeState] = useState<PracticeSession[]>([]);
   const [settings, setSettingsState] = useState<RestringSettings>(DEFAULT_SETTINGS);
@@ -101,6 +106,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     shoes: [],
     stringingRecords: [],
     practiceSessions: [],
+    matches: [],
     settings: DEFAULT_SETTINGS,
     roster: [],
   });
@@ -112,6 +118,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       shoes: shoeStorage.getAll(),
       stringingRecords: stringingStorage.getAll(),
       practiceSessions: practiceStorage.getAll(),
+      matches: matchStorage.getAll(),
       settings: settingsStorage.get(),
       roster: rosterStorage.getAll(),
     };
@@ -120,6 +127,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setShoesState(local.shoes);
     setStringingState(local.stringingRecords);
     setPracticeState(local.practiceSessions);
+    setMatchesState(local.matches);
     setSettingsState(local.settings);
     setRosterState(local.roster);
   }, []);
@@ -131,12 +139,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setShoesState(d.shoes);
     setStringingState(d.stringingRecords);
     setPracticeState(d.practiceSessions);
+    setMatchesState(d.matches);
     setSettingsState(d.settings);
     setRosterState(d.roster);
     racketStorage.save(d.rackets);
     shoeStorage.save(d.shoes);
     stringingStorage.save(d.stringingRecords);
     practiceStorage.save(d.practiceSessions);
+    matchStorage.save(d.matches);
     settingsStorage.save(d.settings);
     rosterStorage.save(d.roster);
   }
@@ -215,6 +225,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     shoeStorage.save(next);
     pushCloud();
   };
+  const setMatches = (updater: Updater<MatchRecord[]>) => {
+    const next = updater(dataRef.current.matches);
+    dataRef.current = { ...dataRef.current, matches: next };
+    setMatchesState(next);
+    matchStorage.save(next);
+    pushCloud();
+  };
   const setStringingRecords = (updater: Updater<StringingRecord[]>) => {
     const next = updater(dataRef.current.stringingRecords);
     dataRef.current = { ...dataRef.current, stringingRecords: next };
@@ -268,10 +285,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         shoes,
         stringingRecords,
         practiceSessions,
+        matches,
         settings,
         roster,
         setRackets,
         setShoes,
+        setMatches,
         setStringingRecords,
         setPracticeSessions,
         setSettings,

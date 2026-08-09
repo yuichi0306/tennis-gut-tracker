@@ -1,8 +1,9 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe } from '../types';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, settingsStorage, rosterStorage, syncMeta } from './storage';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord } from '../types';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, settingsStorage, rosterStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
 import { recordCost } from './cost';
 import { tensionFeelLabel } from './tensionFeel';
+import { formatScore, formatLabel, resultLabel, matchResult } from './match';
 
 export interface BackupData {
   app: 'tennis-gut-tracker';
@@ -14,6 +15,7 @@ export interface BackupData {
   settings?: RestringSettings;
   roster?: RosterPlayer[];
   shoes?: Shoe[]; // シューズ対応より前のバックアップには含まれない
+  matches?: MatchRecord[]; // 試合対応より前のバックアップには含まれない
 }
 
 // 現在の全データをバックアップ用オブジェクトにまとめる
@@ -28,6 +30,7 @@ export function buildBackup(): BackupData {
     settings: settingsStorage.get(),
     roster: rosterStorage.getAll(),
     shoes: shoeStorage.getAll(),
+    matches: matchStorage.getAll(),
   };
 }
 
@@ -109,11 +112,26 @@ export function downloadPracticeCsv() {
   downloadText(`tennis-gut-tracker-practice-${date}.csv`, toCsv(headers, rows), 'text/csv;charset=utf-8');
 }
 
+// 試合記録をCSVで書き出す
+export function downloadMatchCsv() {
+  const nameOf = racketNamer();
+  const shoeNameOf = shoeNamer();
+  const matches = [...matchStorage.getAll()].sort((a, b) => a.date.localeCompare(b.date));
+  const headers = ['日付', '形式', '結果', 'スコア', '対戦相手', '味方', 'ラケット', 'シューズ', '試合時間(分)', 'メモ'];
+  const rows = matches.map((m) => [
+    m.date, formatLabel(m.format), resultLabel(matchResult(m.sets)), formatScore(m.sets),
+    m.opponent, m.partner ?? '', nameOf(m.racketId), shoeNameOf(m.shoeId), m.durationMinutes, m.notes,
+  ]);
+  const date = new Date().toISOString().slice(0, 10);
+  downloadText(`tennis-gut-tracker-matches-${date}.csv`, toCsv(headers, rows), 'text/csv;charset=utf-8');
+}
+
 export interface ImportResult {
   rackets: number;
   stringingRecords: number;
   practiceSessions: number;
   shoes: number;
+  matches: number;
 }
 
 // 配列であり、各要素にidを持つことを最低限チェックする
@@ -145,12 +163,14 @@ export function importBackup(jsonText: string): ImportResult {
   const practiceSessions = asRecordArray<PracticeSession>(obj.practiceSessions);
   const roster = asRecordArray<RosterPlayer>(obj.roster);
   const shoes = asRecordArray<Shoe>(obj.shoes);
+  const matches = asRecordArray<MatchRecord>(obj.matches);
 
   racketStorage.save(rackets);
   stringingStorage.save(stringingRecords);
   practiceStorage.save(practiceSessions);
   rosterStorage.save(roster);
   shoeStorage.save(shoes);
+  matchStorage.save(matches);
 
   // 設定は任意項目。含まれていれば正規化して取り込む（不正値は既定値で補完）
   if (obj.settings && typeof obj.settings === 'object') {
@@ -165,5 +185,6 @@ export function importBackup(jsonText: string): ImportResult {
     stringingRecords: stringingRecords.length,
     practiceSessions: practiceSessions.length,
     shoes: shoes.length,
+    matches: matches.length,
   };
 }

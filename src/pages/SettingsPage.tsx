@@ -97,7 +97,7 @@ export default function SettingsPage() {
 
         <h3 className="mb-1 mt-6 text-lg font-bold">シューズの買い替え設定</h3>
         <p className="mb-3 text-sm text-gray-600 dark:text-slate-300">
-          練習記録で選んだシューズの使用時間が基準に達すると<strong>「買い替え推奨」</strong>、
+          練習・試合で選んだシューズの使用時間が基準に達すると<strong>「買い替え推奨」</strong>、
           基準の{warningPct}%で<strong>「そろそろ」</strong>と表示します。
         </p>
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">

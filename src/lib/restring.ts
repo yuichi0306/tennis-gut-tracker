@@ -1,4 +1,4 @@
-import type { PracticeSession, StringingRecord, RestringSettings, GutThreshold } from '../types';
+import type { PracticeSession, StringingRecord, RestringSettings, GutThreshold, MatchRecord } from '../types';
 import { DEFAULT_SETTINGS, DEFAULT_THRESHOLDS, WARNING_RATIO } from './settings';
 import { parseISODateLocal } from './date';
 
@@ -17,6 +17,7 @@ export function getRestringInfo(
   stringingRecords: StringingRecord[],
   practiceSessions: PracticeSession[],
   settings: RestringSettings = DEFAULT_SETTINGS,
+  matches: MatchRecord[] = [],
 ): RestringInfo {
   const recordsForRacket = stringingRecords
     .filter((r) => r.racketId === racketId)
@@ -33,9 +34,14 @@ export function getRestringInfo(
     };
   }
 
-  const minutesPlayed = practiceSessions
-    .filter((s) => s.racketId === racketId && s.date >= latestStringing.date)
-    .reduce((sum, s) => sum + s.durationMinutes, 0);
+  // 使用時間は練習と試合の両方を合算する（張り替え日以降・同じラケット）。
+  const minutesPlayed =
+    practiceSessions
+      .filter((s) => s.racketId === racketId && s.date >= latestStringing.date)
+      .reduce((sum, s) => sum + s.durationMinutes, 0) +
+    matches
+      .filter((m) => m.racketId === racketId && m.date >= latestStringing.date)
+      .reduce((sum, m) => sum + m.durationMinutes, 0);
   const hoursPlayedSinceStringing = minutesPlayed / 60;
 
   // 張り替え日はローカルタイムゾーンの0時として扱う（UTC解釈だと日本では9時間ズレる）

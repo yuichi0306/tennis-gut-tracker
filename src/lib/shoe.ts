@@ -1,4 +1,4 @@
-import type { PracticeSession, Shoe, ShoeSurface } from '../types';
+import type { PracticeSession, Shoe, ShoeSurface, MatchRecord } from '../types';
 import { WARNING_RATIO, DEFAULT_SHOE_HOURS } from './settings';
 
 // 選べる対応コート（サーフェス）
@@ -7,24 +7,30 @@ export const SHOE_SURFACES: ShoeSurface[] = ['オールコート', 'オムニ・
 export type ShoeStatus = 'ok' | 'warning' | 'overdue';
 
 export interface ShoeUsage {
-  hoursPlayed: number; // このシューズで練習した合計時間
-  sessionCount: number; // 履いた回数
+  hoursPlayed: number; // このシューズで練習・試合した合計時間
+  sessionCount: number; // 履いた回数（練習＋試合）
   status: ShoeStatus;
   costPerHour: number | null; // 1時間あたりの価格（価格・使用時間があるときのみ）
 }
 
-// シューズの使用状況を集計する。
+// シューズの使用状況を集計する。練習と試合の両方で履いた時間を合算する。
 // 使用時間が基準に達したら「買い替え推奨(overdue)」、基準の80%で「そろそろ(warning)」。
 export function getShoeUsage(
   shoe: Pick<Shoe, 'id' | 'price'>,
   practiceSessions: PracticeSession[],
   shoeHours: number,
+  matches: MatchRecord[] = [],
 ): ShoeUsage {
   let minutes = 0;
   let sessionCount = 0;
   for (const s of practiceSessions) {
     if (!s.shoeId || s.shoeId !== shoe.id) continue;
     minutes += s.durationMinutes;
+    sessionCount += 1;
+  }
+  for (const m of matches) {
+    if (!m.shoeId || m.shoeId !== shoe.id) continue;
+    minutes += m.durationMinutes;
     sessionCount += 1;
   }
   const hoursPlayed = minutes / 60;

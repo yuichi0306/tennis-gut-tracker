@@ -13,7 +13,8 @@
 
 - ラケットを登録し、ガットの張り替え記録（種類・テンション・張り場所）と練習記録（時間）を残す。
 - ダッシュボードで、ガット種類ごとの基準に照らして「張り替え時期」を自動判定する。
-- **テニスシューズも登録**でき、練習記録で選んだ分だけ使用時間が積み上がり「買い替え時期」を判定する。
+- **テニスシューズも登録**でき、練習・試合で選んだ分だけ使用時間が積み上がり「買い替え時期」を判定する。
+- **試合記録**（シングルス／ダブルス・ゲームスコア・勝敗自動判定）を残せる。試合時間はラケット・シューズの使用時間にも加算される。
 - データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
 - **Googleログインすると端末間でリアルタイム同期**（Firebase / Firestore）。スマホとPCで同じデータを見られる。
 - **PWA対応**。スマホの「ホーム画面に追加」でアプリのように起動でき、オフラインでも動く。
@@ -68,8 +69,9 @@ src/
     DataContext.tsx        全データ＋認証＋同期の中枢（各hookはここを参照）
   lib/
     storage.ts             localStorage の read/write（キー定義・同期メタもここ）
-    restring.ts            張り替え時期の判定ロジック
-    shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧
+    restring.ts            張り替え時期の判定ロジック（練習＋試合の使用時間で判定）
+    shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧（練習＋試合）
+    match.ts               試合の勝敗判定・スコア整形・勝率集計
     settings.ts            ガット種類別の基準／シューズ基準の既定値・正規化
     stats.ts               統計の集計（月別練習・ガット別使用傾向/平均★/コスト・costStats）
     backup.ts              エクスポート/インポート（バックアップ・復元）
@@ -84,6 +86,7 @@ src/
   hooks/
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useShoes.ts            シューズのCRUD
+    useMatches.ts          試合記録のCRUD
     useStringingRecords.ts 張り替え記録のCRUD
     usePracticeSessions.ts 練習記録のCRUD
     useSettings.ts         張り替え基準の設定の読み書き
@@ -98,6 +101,7 @@ src/
     RacketsPage.tsx        ラケット管理（詳細/タイムラインへのリンク）
     RacketDetailPage.tsx   ラケット詳細（テンション推移・タイムライン）。ルート /racket/:id
     ShoesPage.tsx          シューズ管理（登録・使用時間・買い替え判定）。ルート /shoes
+    MatchesPage.tsx        試合記録（シングルス/ダブルス・ゲームスコア・勝敗自動・勝率）。ルート /matches
     StringingPage.tsx      ガット張り替え記録（追加・編集・削除・絞り込み・ガット名/張り場所のサジェスト）
     PracticePage.tsx       練習記録（追加・編集・削除・体感・絞り込み）
     StatsPage.tsx          統計（今月サマリー・月別棒グラフ・コスト・ガット別・ガット比較）
@@ -121,15 +125,19 @@ Racket           { id, name, createdAt }
 Shoe             { id, name, purchaseDate, price, surface, notes, createdAt }  // 任意項目の未入力は ''／0（Firestoreはundefinedを保存できない）
 StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, gutPrice?, stringingFee?, rating?, notes }  // rating=打感★1〜5、gutPrice/stringingFee=費用（円）。いずれも任意
 PracticeSession  { id, racketId, shoeId?, date, durationMinutes, tensionFeel?, notes }  // shoeId=履いたシューズ（未選択は ''）、tensionFeel='tight'|'ok'|'loose'（任意）
+MatchRecord      { id, racketId, shoeId?, date, format, opponent, partner?, sets, durationMinutes, notes }  // format='singles'|'doubles'、sets=MatchSet[]（勝敗は自動判定）、durationMinutes=使用時間へ加算
+MatchSet         { myGames, opponentGames }  // 0-0 の空セットは無視
 TensionFeel      'tight'（かたい/張りたて） | 'ok'（ちょうど） | 'loose'（ゆるい/へたり）
 GutType          'ポリエステル' | 'ナイロン（合成繊維）' | 'ナチュラル' | 'ハイブリッド'
 ShoeSurface      'オールコート' | 'オムニ・クレー' | 'ハード' | 'クレー' | 'カーペット'
+MatchFormat      'singles' | 'doubles'
 RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 ```
 
 ### localStorage キー（`src/lib/storage.ts`）
 - `tennis-tracker:rackets`
 - `tennis-tracker:shoes`
+- `tennis-tracker:matches`
 - `tennis-tracker:stringing-records`
 - `tennis-tracker:practice-sessions`
 - `tennis-tracker:settings`
@@ -156,7 +164,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 | ナチュラル | 40時間 | 150日（ナイロン相当） |
 | ハイブリッド | 20時間 | 75日（ポリ相当） |
 
-- **使用時間**＝最新の張り替え日以降の練習時間の合計（`hoursPlayedSinceStringing`）。
+- **使用時間**＝最新の張り替え日以降の練習＋試合の合計時間（`hoursPlayedSinceStringing`。試合は `getRestringInfo` の `matches` 引数で合算）。
 - 統計の「ガット別使用傾向」は、各ラケットの張り替え履歴を時系列に並べ、
   「次の張り替えまで」の練習時間をそのガットの使用時間として積み上げて算出する（`lib/stats.ts`）。
 
@@ -268,11 +276,24 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 - 「シューズ」タブ（ルート `/shoes`）。シューズを登録し、**練習記録で「履いたシューズ」を選ぶと使用時間が自動で積み上がる**（二重入力なし）。
 - 実装：`src/lib/shoe.ts`（`getShoeUsage`＝使用時間・回数・状態・¥/時間、`SHOE_SURFACES`）／`src/pages/ShoesPage.tsx`／`src/hooks/useShoes.ts`。
 - 記録項目：シューズ名（必須）・購入日・価格・サーフェス・メモ（いずれも任意）。価格を入れると **1時間あたりのコスト** を表示。
-- 判定：**使用時間のみ**で行う（購入日は経過日数の表示だけに使い、判定には使わない）。基準に達したら「買い替え推奨」、`WARNING_RATIO`(80%)で「そろそろ」。
+- 判定：**使用時間のみ**で行う（練習＋試合を合算。購入日は経過日数の表示だけに使い、判定には使わない）。基準に達したら「買い替え推奨」、`WARNING_RATIO`(80%)で「そろそろ」。
   基準は `RestringSettings.shoeHours`（既定 `DEFAULT_SHOE_HOURS` = 80時間）。設定画面で変更可。
 - シューズを削除しても練習記録は残り、履歴・CSVでは `(削除済みシューズ)` と表示する。編集フォームでも選択が消えないよう、その旨のオプションを出す。
 - 同期・バックアップ対象（`CloudData.shoes`／`BackupData.shoes`）。**シューズ対応前のバックアップ（`shoes` なし）も復元できる**。
 - 注意：`Shoe` の任意項目は `undefined` にせず `''`／`0` を入れる。Firestore は `undefined` を保存できず `setDoc` が失敗するため。
+
+---
+
+## 6.13 試合記録
+
+- 「試合」タブ（ルート `/matches`）。**シングルス／ダブルス**の試合を記録する。
+- 実装：`src/lib/match.ts`（`matchResult`＝勝敗自動判定／`summarize`＝勝率集計／`formatScore` ほか）／`src/pages/MatchesPage.tsx`／`src/hooks/useMatches.ts`。
+- 記録項目：日付・形式・対戦相手（必須／自由入力＋過去入力のサジェスト）・味方（ダブルスのみ）・**セットごとのゲームスコア**（最大5セット・0-0の空セットは無視）・使ったラケット（必須）・シューズ（任意）・試合時間・メモ。
+- **勝敗は自動判定**：取得セット数→同数ならゲーム総数→それも同数なら「引き分け」。入力中もライブでプレビュー表示。
+- **使用時間の加算**：試合時間はラケットの張り替え判定（`getRestringInfo`）とシューズの買い替え判定（`getShoeUsage`）の使用時間に**練習と合算**される。ラケット詳細のタイムライン（🏆）にも試合が並び、累計時間に含まれる。
+- 履歴に勝敗・スコア・勝率のサマリー（絞り込み後の集計）。CSV書き出し（`downloadMatchCsv`）・同期・バックアップ対象（`CloudData.matches`／`BackupData.matches`）。試合対応前のバックアップ（`matches` なし）も復元可。
+- 統計ページ（`StatsPage`）は現状ガット中心で、試合の勝率は「試合」タブ側に表示（統計への統合は今後）。
+- 「対戦表」タブ（`/matchmaker`）とは別物。あちらは当日の組み合わせ自動生成、こちらは試合結果の記録。
 
 ---
 
@@ -314,6 +335,7 @@ git push origin main          # → 自動でビルド・デプロイ
 - 最適テンション分析（テンション体感×実テンション値の相関）
 - 月間/年間のまとめレポート
 - シューズの買い替えをダッシュボード／通知／バッジにも出す（現状は「シューズ」タブ内の表示のみ）
+- 試合の勝率・傾向を統計ページに統合（相手別・サーフェス別・月別勝率など。現状は「試合」タブ内の集計のみ）
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録

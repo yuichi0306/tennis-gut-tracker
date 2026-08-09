@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useRackets } from './useRackets';
 import { useStringingRecords } from './useStringingRecords';
 import { usePracticeSessions } from './usePracticeSessions';
+import { useMatches } from './useMatches';
 import { useSettings } from './useSettings';
 import { getRestringInfo } from '../lib/restring';
 
@@ -17,6 +18,7 @@ export function useRestringSummary(): RestringSummary {
   const { rackets } = useRackets();
   const { records } = useStringingRecords();
   const { sessions } = usePracticeSessions();
+  const { matches } = useMatches();
   const { settings } = useSettings();
 
   return useMemo(() => {
@@ -24,7 +26,7 @@ export function useRestringSummary(): RestringSummary {
     let warning = 0;
     const overdueNames: string[] = [];
     for (const r of rackets) {
-      const info = getRestringInfo(r.id, records, sessions, settings);
+      const info = getRestringInfo(r.id, records, sessions, settings, matches);
       if (info.status === 'overdue') {
         overdue += 1;
         overdueNames.push(r.name);
@@ -33,5 +35,5 @@ export function useRestringSummary(): RestringSummary {
       }
     }
     return { total: rackets.length, overdue, warning, overdueNames };
-  }, [rackets, records, sessions, settings]);
+  }, [rackets, records, sessions, matches, settings]);
 }

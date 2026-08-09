@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { downloadBackup, downloadStringingCsv, downloadPracticeCsv, importBackup, type ImportResult } from '../lib/backup';
+import { downloadBackup, downloadStringingCsv, downloadPracticeCsv, downloadMatchCsv, importBackup, type ImportResult } from '../lib/backup';
 
 export default function DataPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,7 +24,7 @@ export default function DataPage() {
         const result: ImportResult = importBackup(String(reader.result));
         setMessage({
           type: 'ok',
-          text: `復元しました（ラケット${result.rackets}件・シューズ${result.shoes}件・張り替え${result.stringingRecords}件・練習${result.practiceSessions}件）。画面を再読み込みします…`,
+          text: `復元しました（ラケット${result.rackets}件・シューズ${result.shoes}件・張り替え${result.stringingRecords}件・練習${result.practiceSessions}件・試合${result.matches}件）。画面を再読み込みします…`,
         });
         setTimeout(() => window.location.reload(), 1200);
       } catch (err) {
@@ -67,6 +67,12 @@ export default function DataPage() {
             className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
           >
             練習記録CSV
+          </button>
+          <button
+            onClick={() => { downloadMatchCsv(); setMessage({ type: 'ok', text: '試合記録をCSVで書き出しました。' }); }}
+            className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+          >
+            試合記録CSV
           </button>
         </div>
       </section>

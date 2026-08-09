@@ -2,10 +2,12 @@ import { Link, useParams } from 'react-router-dom';
 import { useRackets } from '../hooks/useRackets';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
+import { useMatches } from '../hooks/useMatches';
 import type { StringingRecord } from '../types';
 import { formatMinutes } from '../lib/stats';
 import { recordCost, formatYen } from '../lib/cost';
 import { tensionFeelLabel, tensionFeelClass } from '../lib/tensionFeel';
+import { matchResult, resultLabel, formatScore } from '../lib/match';
 import StarRating from '../components/StarRating';
 
 export default function RacketDetailPage() {
@@ -13,6 +15,7 @@ export default function RacketDetailPage() {
   const { rackets } = useRackets();
   const { records } = useStringingRecords();
   const { sessions } = usePracticeSessions();
+  const { matches } = useMatches();
 
   const racket = rackets.find((r) => r.id === id) ?? null;
 
@@ -20,9 +23,10 @@ export default function RacketDetailPage() {
     .filter((r) => r.racketId === id)
     .sort((a, b) => a.date.localeCompare(b.date));
   const practices = sessions.filter((s) => s.racketId === id);
+  const racketMatches = matches.filter((m) => m.racketId === id);
 
-  // 各練習の「張り替え後の累計使用時間（時間）」を求める。
-  // その練習日以前で最も新しい張り替え日を基準に、同じ張り替え期間内で積み上げる。
+  // 各プレー（練習・試合）の「張り替え後の累計使用時間（時間）」を求める。
+  // その日以前で最も新しい張り替え日を基準に、同じ張り替え期間内で積み上げる。
   const cumHoursById = new Map<string, number | null>();
   const runningByPeriod = new Map<string, number>();
   const periodStart = (date: string): string | null => {
@@ -33,12 +37,17 @@ export default function RacketDetailPage() {
     }
     return start;
   };
-  [...practices]
+  // 練習と試合を日付順にまとめて積み上げる（同じ張り替え期間の消耗として合算）
+  const plays: { id: string; date: string; durationMinutes: number }[] = [
+    ...practices.map((p) => ({ id: p.id, date: p.date, durationMinutes: p.durationMinutes })),
+    ...racketMatches.map((m) => ({ id: m.id, date: m.date, durationMinutes: m.durationMinutes })),
+  ];
+  plays
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
     .forEach((p) => {
       const ps = periodStart(p.date);
       if (ps === null) {
-        cumHoursById.set(p.id, null); // 張り替え前の練習
+        cumHoursById.set(p.id, null); // 張り替え前のプレー
         return;
       }
       const prev = runningByPeriod.get(ps) ?? 0;
@@ -50,7 +59,8 @@ export default function RacketDetailPage() {
   // タイムライン（新しい順）
   type Ev =
     | { kind: 'string'; date: string; sortKey: string; rec: StringingRecord }
-    | { kind: 'practice'; date: string; sortKey: string; id: string; durationMinutes: number; tensionFeel?: string; notes: string };
+    | { kind: 'practice'; date: string; sortKey: string; id: string; durationMinutes: number; tensionFeel?: string; notes: string }
+    | { kind: 'match'; date: string; sortKey: string; id: string; durationMinutes: number; label: string; notes: string };
   const events: Ev[] = [
     ...stringingsAsc.map((r): Ev => ({ kind: 'string', date: r.date, sortKey: `${r.date}-0`, rec: r })),
     ...practices.map((s): Ev => ({
@@ -61,6 +71,15 @@ export default function RacketDetailPage() {
       durationMinutes: s.durationMinutes,
       tensionFeel: s.tensionFeel,
       notes: s.notes,
+    })),
+    ...racketMatches.map((m): Ev => ({
+      kind: 'match',
+      date: m.date,
+      sortKey: `${m.date}-2`,
+      id: m.id,
+      durationMinutes: m.durationMinutes,
+      label: `${resultLabel(matchResult(m.sets))} ${formatScore(m.sets)} vs ${m.opponent}`,
+      notes: m.notes,
     })),
   ].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
 
@@ -110,6 +129,22 @@ export default function RacketDetailPage() {
                       {r.shop && <span>張り場所: {r.shop}</span>}
                     </p>
                     {r.notes && <p className="text-gray-500 dark:text-slate-400">メモ: {r.notes}</p>}
+                  </li>
+                );
+              }
+              if (ev.kind === 'match') {
+                const cum = cumHoursById.get(ev.id);
+                return (
+                  <li key={`m-${ev.id}`} className="rounded border border-gray-200 dark:border-slate-700 border-l-4 border-l-amber-400 bg-white dark:bg-slate-800 p-3 text-sm">
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">🏆 {ev.date} 試合</span>
+                      <span className="text-gray-600 dark:text-slate-300">{ev.label}</span>
+                      <span className="text-gray-500 dark:text-slate-400">{formatMinutes(ev.durationMinutes)}</span>
+                      {cum !== null && cum !== undefined && (
+                        <span className="text-xs text-gray-400 dark:text-slate-500">張り替え後 約{cum.toFixed(1)}時間時点</span>
+                      )}
+                    </p>
+                    {ev.notes && <p className="text-gray-500 dark:text-slate-400">メモ: {ev.notes}</p>}
                   </li>
                 );
               }

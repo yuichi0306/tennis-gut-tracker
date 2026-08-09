@@ -52,6 +52,30 @@ export interface PracticeSession {
   notes: string;
 }
 
+// 試合の形式
+export type MatchFormat = 'singles' | 'doubles';
+
+// 1セットのゲームスコア（自分側・相手側の取得ゲーム数）
+export interface MatchSet {
+  myGames: number;
+  opponentGames: number;
+}
+
+// 試合記録。スコアはセットごとのゲーム数で持ち、勝敗はそこから自動判定する。
+// 使用時間（durationMinutes）はラケット・シューズの消耗にも加算する。
+export interface MatchRecord {
+  id: string;
+  racketId: string; // 使ったラケット（使用時間の加算に使う）
+  shoeId?: string; // 履いたシューズ（未選択は ''）
+  date: string; // ISO date
+  format: MatchFormat;
+  opponent: string; // 対戦相手（ダブルスは相手ペアを自由入力）
+  partner?: string; // ダブルスの味方（未入力は ''）
+  sets: MatchSet[]; // セットごとのゲームスコア（0-0の空セットは無視）
+  durationMinutes: number; // 試合時間（使用時間へ加算）
+  notes: string;
+}
+
 // ガット種類ごとの張り替え推奨ライン（overdue）。判定は使用時間または経過日数で行う。
 export interface GutThreshold {
   hours: number; // 使用時間の推奨ライン

@@ -1,4 +1,4 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord } from '../types';
 import { resolveSettings } from './settings';
 
 const KEYS = {
@@ -6,6 +6,7 @@ const KEYS = {
   shoes: 'tennis-tracker:shoes',
   stringingRecords: 'tennis-tracker:stringing-records',
   practiceSessions: 'tennis-tracker:practice-sessions',
+  matches: 'tennis-tracker:matches',
   settings: 'tennis-tracker:settings',
   roster: 'tennis-tracker:roster', // 対戦表の参加者名簿
   owner: 'tennis-tracker:owner', // このブラウザのローカルデータの持ち主(uid)
@@ -44,6 +45,11 @@ export const stringingStorage = {
 export const practiceStorage = {
   getAll: (): PracticeSession[] => load<PracticeSession>(KEYS.practiceSessions),
   save: (items: PracticeSession[]) => save(KEYS.practiceSessions, items),
+};
+
+export const matchStorage = {
+  getAll: (): MatchRecord[] => load<MatchRecord>(KEYS.matches),
+  save: (items: MatchRecord[]) => save(KEYS.matches, items),
 };
 
 export const rosterStorage = {

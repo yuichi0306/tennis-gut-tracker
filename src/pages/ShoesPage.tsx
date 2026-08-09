@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useShoes } from '../hooks/useShoes';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
+import { useMatches } from '../hooks/useMatches';
 import { useSettings } from '../hooks/useSettings';
 import { getShoeUsage, SHOE_SURFACES, type ShoeStatus } from '../lib/shoe';
 import { formatMinutes } from '../lib/stats';
@@ -38,6 +39,7 @@ function daysSince(purchaseDate: string): number | null {
 export default function ShoesPage() {
   const { shoes, addShoe, updateShoe, deleteShoe } = useShoes();
   const { sessions } = usePracticeSessions();
+  const { matches } = useMatches();
   const { settings } = useSettings();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -145,7 +147,7 @@ export default function ShoesPage() {
         ) : (
           <ul className="space-y-3">
             {shoes.map((shoe) => {
-              const usage = getShoeUsage(shoe, sessions, settings.shoeHours);
+              const usage = getShoeUsage(shoe, sessions, settings.shoeHours, matches);
               const style = statusStyles[usage.status];
               const pct = Math.min((usage.hoursPlayed / settings.shoeHours) * 100, 100);
               const days = daysSince(shoe.purchaseDate);
@@ -205,7 +207,10 @@ export default function ShoesPage() {
         )}
         {shoes.length > 0 && (
           <p className="mt-3 text-xs text-gray-400 dark:text-slate-500">
-            使用時間の合計は、練習記録でそのシューズを選んだ分だけ積み上がります（累計 {formatMinutes(sessions.filter((s) => s.shoeId).reduce((sum, s) => sum + s.durationMinutes, 0))}）。
+            使用時間の合計は、練習・試合でそのシューズを選んだ分だけ積み上がります（累計 {formatMinutes(
+              sessions.filter((s) => s.shoeId).reduce((sum, s) => sum + s.durationMinutes, 0) +
+              matches.filter((m) => m.shoeId).reduce((sum, m) => sum + m.durationMinutes, 0),
+            )}）。
           </p>
         )}
       </section>
