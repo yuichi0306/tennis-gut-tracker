@@ -4,8 +4,8 @@
 
 - **公開URL**: https://yuichi0306.github.io/tennis-gut-tracker/
 - **リポジトリ**: https://github.com/yuichi0306/tennis-gut-tracker （パブリック）
-- **最終更新**: 2026-07-10
-- **参考**: アプリ紹介用に「できることガイド（A4一枚・図解入り・印刷対応）」をClaude Artifactとして作成済み（既定は非公開。リポジトリ外の生成物）。
+- **最終更新**: 2026-08-10
+- **参考**: アプリ紹介用に「できることガイド（A4一枚・図解入り・印刷対応）」をClaude Artifactとして作成済み（既定は非公開。リポジトリ外の生成物）。**内容はシューズ管理まで反映済み。試合記録・欲しいものリスト・持ち物リストは未反映**なので、更新時は追記が必要。
 
 ---
 
@@ -258,7 +258,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 
 ## 6.9 CSVエクスポート
 
-- 「データ」タブから **張り替え記録／練習記録をCSVで書き出し**。`src/lib/backup.ts` の `downloadStringingCsv` / `downloadPracticeCsv`。
+- 「データ」タブから **張り替え記録／練習記録／試合記録をCSVで書き出し**。`src/lib/backup.ts` の `downloadStringingCsv` / `downloadPracticeCsv` / `downloadMatchCsv`。
 - Excelで日本語が化けないよう **UTF-8 BOM付き**、カンマ・改行・引用符はエスケープ（`toCsv`/`csvEscape`）。
 
 ---
