@@ -7,6 +7,7 @@ import { useMatches } from '../hooks/useMatches';
 import { useSettings } from '../hooks/useSettings';
 import { useRestringSummary } from '../hooks/useRestringSummary';
 import { getRestringInfo, type RestringStatus } from '../lib/restring';
+import { getRestringForecast, forecastText, forecastReason } from '../lib/forecast';
 import { canNotify, notifyPermission, requestNotifyPermission } from '../lib/notify';
 
 const BANNER_DISMISS_KEY = 'tennis-tracker:restring-banner-dismissed';
@@ -102,6 +103,7 @@ export default function DashboardPage() {
       <ul className="space-y-3">
         {rackets.map((racket) => {
           const info = getRestringInfo(racket.id, records, sessions, settings, matches);
+          const forecast = getRestringForecast(info, racket.id, sessions, matches);
           const style = statusStyles[info.status];
           return (
             <li key={racket.id} className={`rounded-xl border p-4 shadow-sm ${style.card}`}>
@@ -125,6 +127,16 @@ export default function DashboardPage() {
                     張り替え後の使用時間: 約{info.hoursPlayedSinceStringing.toFixed(1)}時間
                     {info.threshold && ` / 基準${info.threshold.hours}時間`}
                   </p>
+                  {forecast && (
+                    <p className="pt-0.5">
+                      <span className="font-medium text-gray-700 dark:text-slate-200">
+                        🔮 次の張り替え予測: {forecastText(forecast)}
+                      </span>
+                      <span className="block text-xs text-gray-400 dark:text-slate-500">
+                        {forecastReason(forecast)}
+                      </span>
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="mt-2 text-sm">
@@ -140,6 +152,7 @@ export default function DashboardPage() {
       <p className="text-xs text-gray-400 dark:text-slate-500">
         目安: ガット種類ごとの使用時間・経過日数の基準に達すると「張り替え推奨」、その80%で「そろそろ」と表示します。
         基準は<Link to="/settings" className="underline">設定</Link>で変更できます。
+        予測は直近のプレーペースがそのまま続く前提の目安なので、練習量が変わればズレます。
       </p>
     </div>
   );

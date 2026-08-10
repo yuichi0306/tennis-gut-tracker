@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes } from 'react-router-dom';
 import { useRestringSummary } from './hooks/useRestringSummary';
 import { setAppBadge, notifyRestring, notifyPermission } from './lib/notify';
 import DashboardPage from './pages/DashboardPage';
@@ -18,21 +18,9 @@ import ManualPage from './pages/ManualPage';
 import MatchmakerPage from './pages/MatchmakerPage';
 import AuthBar from './components/AuthBar';
 import ThemeToggle from './components/ThemeToggle';
+import NavTabs from './components/NavTabs';
 
-const navItems = [
-  { to: '/', label: 'ダッシュボード', end: true },
-  { to: '/rackets', label: 'ラケット' },
-  { to: '/shoes', label: 'シューズ' },
-  { to: '/stringing', label: 'ガット張り替え' },
-  { to: '/practice', label: '練習記録' },
-  { to: '/matches', label: '試合' },
-  { to: '/stats', label: '統計' },
-  { to: '/matchmaker', label: '対戦表' },
-  { to: '/wishlist', label: '欲しいもの' },
-  { to: '/packing', label: '持ち物' },
-  { to: '/data', label: 'データ' },
-  { to: '/settings', label: '設定' },
-];
+// タブの一覧と並び順は src/lib/navOrder.ts（ユーザーがドラッグで並び替えできる）。
 // マニュアル(/manual)はタブには出さず、ヘッダー右上の「使い方」ボタンから開く。
 
 function App() {
@@ -73,34 +61,7 @@ function App() {
             </Link>
           </div>
         </div>
-        <nav className="mx-auto max-w-4xl px-2">
-          <div className="flex gap-1 overflow-x-auto pb-2">
-            {navItems.map((item) => {
-              const badge = item.to === '/' ? summary.overdue : 0;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `relative flex shrink-0 items-center whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-                      isActive
-                        ? 'bg-white text-emerald-700 shadow-sm'
-                        : 'text-emerald-50 hover:bg-white/15'
-                    }`
-                  }
-                >
-                  {item.label}
-                  {badge > 0 && (
-                    <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white/30">
-                      {badge}
-                    </span>
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
-        </nav>
+        <NavTabs badges={{ '/': summary.overdue }} />
       </header>
       <main className="mx-auto max-w-4xl px-4 py-8">
         <Routes>

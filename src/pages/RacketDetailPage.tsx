@@ -3,7 +3,10 @@ import { useRackets } from '../hooks/useRackets';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import { useMatches } from '../hooks/useMatches';
+import { useSettings } from '../hooks/useSettings';
 import type { StringingRecord } from '../types';
+import { getRestringInfo } from '../lib/restring';
+import { getRestringForecast, forecastText, forecastReason } from '../lib/forecast';
 import { formatMinutes } from '../lib/stats';
 import { recordCost, formatYen } from '../lib/cost';
 import { tensionFeelLabel, tensionFeelClass } from '../lib/tensionFeel';
@@ -16,8 +19,12 @@ export default function RacketDetailPage() {
   const { records } = useStringingRecords();
   const { sessions } = usePracticeSessions();
   const { matches } = useMatches();
+  const { settings } = useSettings();
 
   const racket = rackets.find((r) => r.id === id) ?? null;
+
+  const restringInfo = getRestringInfo(id, records, sessions, settings, matches);
+  const forecast = getRestringForecast(restringInfo, id, sessions, matches);
 
   const stringingsAsc = records
     .filter((r) => r.racketId === id)
@@ -100,6 +107,23 @@ export default function RacketDetailPage() {
         <Link to="/" className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">← ダッシュボードへ</Link>
         <h2 className="mt-1 text-xl font-bold">{racket.name}</h2>
       </div>
+
+      {restringInfo.latestStringing && (
+        <section className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4">
+          <h3 className="mb-1 font-bold">🔮 次の張り替え予測</h3>
+          {forecast ? (
+            <>
+              <p className="text-sm text-gray-700 dark:text-slate-200">{forecastText(forecast)}</p>
+              <p className="mt-0.5 text-xs text-gray-400 dark:text-slate-500">{forecastReason(forecast)}</p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-700 dark:text-slate-200">
+              すでに張り替え推奨の時期です（使用時間 約{restringInfo.hoursPlayedSinceStringing.toFixed(1)}時間 /{' '}
+              {restringInfo.daysSinceStringing}日経過）。
+            </p>
+          )}
+        </section>
+      )}
 
       <section>
         <h3 className="mb-2 font-bold">テンション推移</h3>

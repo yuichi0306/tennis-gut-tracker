@@ -16,3 +16,13 @@ export function parseISODateLocal(dateISO: string): Date {
   const [y, m, d] = dateISO.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
+
+// YYYY-MM-DD に日数を足した YYYY-MM-DD を返す（マイナスも可）。月またぎは Date に任せる。
+export function addDaysISO(dateISO: string, days: number): string {
+  const d = parseISODateLocal(dateISO);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
