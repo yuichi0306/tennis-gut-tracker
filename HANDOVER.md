@@ -4,19 +4,21 @@
 
 - **公開URL**: https://yuichi0306.github.io/tennis-gut-tracker/
 - **リポジトリ**: https://github.com/yuichi0306/tennis-gut-tracker （パブリック）
-- **最終更新**: 2026-08-10
+- **最終更新**: 2026-09-06
 - **参考**: アプリ紹介用に「できることガイド（A4一枚・図解入り・印刷対応）」をClaude Artifactとして作成済み（既定は非公開。リポジトリ外の生成物）。
   URL: https://claude.ai/code/artifact/713f5abb-8c3b-40e5-a3fc-ceec2a1a1a99 （更新するときは、この**URLを `url` に渡して同じ場所を上書き**する。渡さないと別URLの新規ガイドができてしまう）
-  **2026-08-10時点で全機能を反映済み**（試合記録・欲しいものリスト・持ち物リスト・ガット寿命の予測・タブの並び替えを含む）。機能を足したらここも追記する。
+  **2026-08-10時点の機能まで反映済み**（試合記録・欲しいものリスト・持ち物リスト・ガット寿命の予測・タブの並び替えを含む）。
+  ⚠️ **2026-09-06 に追加した「ラケットの購入日」「ラケット・シューズのアーカイブ」「対戦表の保存」はガイド未反映。** 次に更新するときに書き足す。
   A4一枚に収める前提なので、追記したら**用紙からあふれていないか確認する**（1ページ＝約1123px。現状は約10mmの余白）。
 
 ---
 
 ## 1. 概要
 
-- ラケットを登録し、ガットの張り替え記録（種類・テンション・張り場所）と練習記録（時間）を残す。
+- ラケットを登録し、ガットの張り替え記録（種類・テンション・張り場所）と練習記録（時間）を残す。ラケットには**購入日**も持てる。
 - ダッシュボードで、ガット種類ごとの基準に照らして「張り替え時期」を自動判定し、**直近のペースから「次の張り替えはいつ頃か」も予測**する。
 - **テニスシューズも登録**でき、練習・試合で選んだ分だけ使用時間が積み上がり「買い替え時期」を判定する。
+- ラケット・シューズは**アーカイブ**でき、記録を残したまま一覧や入力欄から外せる（削除ではない）。
 - **試合記録**（シングルス／ダブルス・ゲームスコア・勝敗自動判定）を残せる。試合時間はラケット・シューズの使用時間にも加算される。
 - **欲しいものリスト**（テニスグッズ）と**合宿の持ち物リスト**（定番プリセット・チェック式）も管理できる。
 - データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
@@ -24,6 +26,7 @@
 - **PWA対応**。スマホの「ホーム画面に追加」でアプリのように起動でき、オフラインでも動く。
 - **ライト／ダークの表示テーマ**に対応（ヘッダーのトグルで切替、OS設定に自動追従）。
 - **タブはドラッグで並び替え**でき、よく使う画面を左に寄せられる（並び順はその端末だけに保存）。
+- **対戦表は生成すると保存され**、「クリア」を押すまで残る（端末間でも同期）。
 
 ---
 
@@ -77,7 +80,8 @@ src/
     restring.ts            張り替え時期の判定ロジック（練習＋試合の使用時間で判定）
     forecast.ts            ガット寿命の予測（直近のプレーペースから次の張り替え時期を見積もる）
     navOrder.ts            ヘッダーのタブ一覧と並び順（ドラッグで並び替え・localStorageのみ）
-    shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧（練習＋試合）
+    racket.ts              ラケットの正規化（purchaseDate/archived の補完）・使用中の絞り込み
+    shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧（練習＋試合）・正規化/アーカイブ絞り込み
     match.ts               試合の勝敗判定・スコア整形・勝率集計
     wishlist.ts            欲しいものの優先度ラベル・並び替え
     packing.ts             合宿持ち物のカテゴリ・定番プリセット
@@ -91,7 +95,7 @@ src/
     firebase.ts            Firebase 初期化・設定（apiKey もここ）
     cloud.ts               Firestore 入出力（users/{uid} の read/write/購読）
     theme.ts               表示テーマ（ライト/ダーク）の解決・保存・適用
-    matchmaker.ts          対戦表の自動生成（ダブルス/シングルス・ラウンド生成/追加）
+    matchmaker.ts          対戦表の自動生成（ダブルス/シングルス・ラウンド生成/追加）＋保存データ SavedSchedule の検証
   hooks/
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useShoes.ts            シューズのCRUD
@@ -135,8 +139,8 @@ public/
 ## 5. データモデル（`src/types/index.ts`）
 
 ```ts
-Racket           { id, name, createdAt }
-Shoe             { id, name, purchaseDate, price, surface, notes, createdAt }  // 任意項目の未入力は ''／0（Firestoreはundefinedを保存できない）
+Racket           { id, name, purchaseDate, archived, createdAt }  // purchaseDate=購入日（未入力は ''）、archived=アーカイブ。createdAt はアプリへの登録日時で購入日とは別
+Shoe             { id, name, purchaseDate, price, surface, archived, notes, createdAt }  // 任意項目の未入力は ''／0（Firestoreはundefinedを保存できない）
 StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, gutPrice?, stringingFee?, rating?, notes }  // rating=打感★1〜5、gutPrice/stringingFee=費用（円）。いずれも任意
 PracticeSession  { id, racketId, shoeId?, date, durationMinutes, tensionFeel?, notes }  // shoeId=履いたシューズ（未選択は ''）、tensionFeel='tight'|'ok'|'loose'（任意）
 MatchRecord      { id, racketId, shoeId?, date, format, opponent, partner?, sets, durationMinutes, notes }  // format='singles'|'doubles'、sets=MatchSet[]（勝敗は自動判定）、durationMinutes=使用時間へ加算
@@ -149,6 +153,7 @@ WishItem         { id, name, price, priority, bought, notes, createdAt }  // pri
 WishPriority     'high'（高） | 'mid'（中） | 'low'（低）
 PackingItem      { id, name, category, quantity, packed }  // category未設定は ''、quantityは1以上
 RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
+SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。names=生成時点の名前の控え。無いときは null（lib/matchmaker.ts）
 ```
 
 ### localStorage キー（`src/lib/storage.ts`）
@@ -166,6 +171,7 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 - `tennis-tracker:nav-order`（タブの並び順。パスの配列。未設定なら既定順）
 - `tennis-tracker:restring-banner-dismissed`（要張り替えサマリーバナーを閉じた時の状況署名）
 - `tennis-tracker:roster`（対戦表の参加者名簿。他データと同じく端末間同期・バックアップ対象）
+- `tennis-tracker:matchmaker`（生成した対戦表。クリアするまで残る。端末間同期・バックアップ対象）
 
 未ログイン時のデータは端末・ブラウザごとに独立。**Googleログインすると端末間で同期**される（6.1参照）。ログインしない場合は「データ」タブでJSONを書き出し／読み込みして移行する。
 
@@ -288,6 +294,10 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 - アルゴリズム：ランダム再試行つきの貪欲法。**試合数を均等化**（試合数が多い人を優先して休憩）し、**同じ相手とのペア・対戦の重複を最小化**（`WEIGHT.partner`／`opponent`）。
 - **「ラウンド追加」**は過去のラウンドを固定したまま累積カウントを引き継いで次のラウンドを生成（`extendSchedule`）。「再生成」は全体を作り直し。
 - 名簿（`tennis-tracker:roster`）は他データと同じく `DataContext` 経由で管理し、**端末間同期・バックアップ/復元の対象**（`CloudData.roster`／`BackupData.roster`）。`MatchmakerPage` は `useData().roster` / `setRoster` を使う。出力は現状テキストコピーのみ（印刷/CSVは今後）。
+- **生成した対戦表は保存される**（`SavedSchedule` = 対戦表＋生成時の名前の控え＋作成日時）。**「クリア」を押すまで残り**、アプリを閉じても消えない。名簿と同じく端末間同期・バックアップ対象（`CloudData.matchmaker`／`BackupData.matchmaker`。未作成・クリア後は `null`）。
+  - 画面のstateではなく `useData().matchmaker` / `setMatchmaker` を通す。保存値は `normalizeSavedSchedule()` で検証し、壊れていれば「対戦表なし」として扱う。
+  - 開き直した直後でも「再生成」できるよう、保存内容から**形式・コート数・ラウンド数・参加者の選択を一度だけ復元**する（`restoredRef`）。
+  - 「ラウンド追加」では**最初の作成日時を引き継ぐ**（作り直しではないため）。
 
 ---
 
@@ -299,7 +309,9 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 - 判定：**使用時間のみ**で行う（練習＋試合を合算。購入日は経過日数の表示だけに使い、判定には使わない）。基準に達したら「買い替え推奨」、`WARNING_RATIO`(80%)で「そろそろ」。
   基準は `RestringSettings.shoeHours`（既定 `DEFAULT_SHOE_HOURS` = 80時間）。設定画面で変更可。
 - シューズを削除しても練習記録は残り、履歴・CSVでは `(削除済みシューズ)` と表示する。編集フォームでも選択が消えないよう、その旨のオプションを出す。
-- 同期・バックアップ対象（`CloudData.shoes`／`BackupData.shoes`）。**シューズ対応前のバックアップ（`shoes` なし）も復元できる**。
+- **アーカイブ**（`archived`）: 履かなくなったシューズを削除せず片付ける。使用時間・履歴はそのまま残り、買い替え判定のバッジと練習／試合の選択肢から外れる。画面は「使用中」「アーカイブ済み」の2セクション。
+  絞り込みは `activeShoes()`、選択肢に残す表示は `pastShoeLabel()`（どちらも `lib/shoe.ts`）。
+- 同期・バックアップ対象（`CloudData.shoes`／`BackupData.shoes`）。**シューズ対応前のバックアップ（`shoes` なし）も復元できる**。`archived` の無い古いデータは `normalizeShoe()` が `false` で補完する。
 - 注意：`Shoe` の任意項目は `undefined` にせず `''`／`0` を入れる。Firestore は `undefined` を保存できず `setDoc` が失敗するため。
 
 ---
@@ -350,6 +362,19 @@ RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 
 ---
 
+## 6.17 ラケットの購入日／ラケット・シューズのアーカイブ
+
+- **購入日**（`Racket.purchaseDate`）: ラケット画面の登録／編集フォームで入力。ラケット一覧と詳細に「購入日」「購入から◯年◯ヶ月」を表示（`elapsedLabel()` @ `lib/date.ts`）。
+  **表示専用**で、張り替え判定には使わない（ラケットに買い替え判定は無い）。`createdAt`（アプリへの登録日時）とは別物なので混同しない。
+- **アーカイブ**（`Racket.archived` / `Shoe.archived`）: 削除せずに「もう使わない」ものを片付ける仕組み。
+  - 記録は一切消えない。**入力欄の選択肢・ダッシュボード・通知/バッジ・買い替え判定から外れるだけ**。いつでも「使用中に戻す」で復帰できる。
+  - 絞り込みは `activeRackets()` / `activeShoes()`。**既存記録を編集するときは選択が消えないよう**、`pastRacketLabel()` / `pastShoeLabel()` で「◯◯（アーカイブ済み）」を選択肢に残す（削除済みなら「(削除済み…)」）。
+  - **履歴の絞り込みと名前表示は全件が対象**（過去の記録の名前は出し続ける）。
+  - 使用中のラケットが0本でも、**編集中はフォームを出す**（`racketOptions.length === 0 && !editingId`）。これが無いと全部アーカイブしたときに既存記録を直せなくなる。
+- 古いデータには項目が無いので、読み込み時に `normalizeRacket()` / `normalizeShoe()` が `''`／`false` で補完する（`lib/storage.ts` と `lib/cloud.ts` の両方で通す）。**Firestore は `undefined` を保存できない**ため、必ず値を入れる。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。
@@ -390,4 +415,4 @@ git push origin main          # → 自動でビルド・デプロイ
 - 試合の勝率・傾向を統計ページに統合（相手別・サーフェス別・月別勝率など。現状は「試合」タブ内の集計のみ）
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え / ラケットの購入日 / ラケット・シューズのアーカイブ / 対戦表の保存
