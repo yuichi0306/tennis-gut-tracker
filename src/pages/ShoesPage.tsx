@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useShoes } from '../hooks/useShoes';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import { useMatches } from '../hooks/useMatches';
@@ -103,7 +104,9 @@ export default function ShoesPage() {
       <li key={shoe.id} className={`rounded-xl border p-4 shadow-sm ${shoe.archived ? archivedCard : style.card}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="font-semibold">{shoe.name}</p>
+            <Link to={`/shoe/${shoe.id}`} className="font-semibold hover:underline">
+              {shoe.name}
+            </Link>
             <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-slate-400">
               {shoe.surface && <span>{shoe.surface}</span>}
               {shoe.price > 0 && <span>{formatYen(shoe.price)}</span>}
@@ -138,7 +141,10 @@ export default function ShoesPage() {
 
         {shoe.notes && <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">メモ: {shoe.notes}</p>}
 
-        <div className="mt-3 flex gap-3 text-sm">
+        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+          <Link to={`/shoe/${shoe.id}`} className="text-emerald-700 hover:underline dark:text-emerald-400">
+            タイムライン
+          </Link>
           <button onClick={() => startEdit(shoe)} className="text-emerald-700 hover:underline dark:text-emerald-400">
             編集
           </button>

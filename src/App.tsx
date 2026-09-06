@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import RacketsPage from './pages/RacketsPage';
 import RacketDetailPage from './pages/RacketDetailPage';
 import ShoesPage from './pages/ShoesPage';
+import ShoeDetailPage from './pages/ShoeDetailPage';
 import StringingPage from './pages/StringingPage';
 import PracticePage from './pages/PracticePage';
 import MatchesPage from './pages/MatchesPage';
@@ -69,6 +70,7 @@ function App() {
           <Route path="/rackets" element={<RacketsPage />} />
           <Route path="/racket/:id" element={<RacketDetailPage />} />
           <Route path="/shoes" element={<ShoesPage />} />
+          <Route path="/shoe/:id" element={<ShoeDetailPage />} />
           <Route path="/stringing" element={<StringingPage />} />
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/matches" element={<MatchesPage />} />
