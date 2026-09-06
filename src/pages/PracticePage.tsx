@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
 import { activeRackets, pastRacketLabel } from '../lib/racket';
+import { activeShoes, pastShoeLabel } from '../lib/shoe';
 import { useShoes } from '../hooks/useShoes';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import type { PracticeSession, TensionFeel } from '../types';
@@ -13,6 +14,8 @@ export default function PracticePage() {
   // 記録の入力欄にはアーカイブしていないラケットだけを出す
   const racketOptions = activeRackets(rackets);
   const { shoes } = useShoes();
+  // シューズも同じく、アーカイブしていないものだけを選択肢に出す
+  const shoeOptions = activeShoes(shoes);
   const { sessions, addSession, updateSession, deleteSession } = usePracticeSessions();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -121,12 +124,12 @@ export default function PracticePage() {
               シューズ（任意）
               <select value={shoeId} onChange={(e) => setShoeId(e.target.value)} className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5">
                 <option value="">未選択</option>
-                {shoes.map((s) => (
+                {shoeOptions.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-                {/* 削除済みシューズを選んでいた記録を編集しても、選択が消えないようにする */}
-                {shoeId && !shoes.some((s) => s.id === shoeId) && (
-                  <option value={shoeId}>(削除済みシューズ)</option>
+                {/* アーカイブ済み・削除済みのシューズを選んでいた記録を編集しても、選択が消えないようにする */}
+                {shoeId && !shoeOptions.some((s) => s.id === shoeId) && (
+                  <option value={shoeId}>{pastShoeLabel(shoes, shoeId)}</option>
                 )}
               </select>
             </label>

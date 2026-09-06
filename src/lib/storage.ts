@@ -1,6 +1,7 @@
 import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
 import { resolveSettings } from './settings';
 import { normalizeRacket } from './racket';
+import { normalizeShoe } from './shoe';
 
 const KEYS = {
   rackets: 'tennis-tracker:rackets',
@@ -36,7 +37,7 @@ export const racketStorage = {
 };
 
 export const shoeStorage = {
-  getAll: (): Shoe[] => load<Shoe>(KEYS.shoes),
+  getAll: (): Shoe[] => load<Shoe>(KEYS.shoes).map(normalizeShoe),
   save: (items: Shoe[]) => save(KEYS.shoes, items),
 };
 
