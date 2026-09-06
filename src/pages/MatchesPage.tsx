@@ -23,6 +23,7 @@ const resultStyle: Record<MatchResult, string> = {
 export default function MatchesPage() {
   const { rackets } = useRackets();
   // 記録の入力欄にはアーカイブしていないラケットだけを出す
+  // （編集中は、使用中のラケットが無くてもフォームを出す。既存記録を直せなくなるのを防ぐため）
   const racketOptions = activeRackets(rackets);
   const { shoes } = useShoes();
   // シューズも同じく、アーカイブしていないものだけを選択肢に出す
@@ -155,7 +156,7 @@ export default function MatchesPage() {
     <div className="space-y-6">
       <section>
         <h2 className="mb-2 text-xl font-bold">{editingId ? '試合を編集' : '試合を記録'}</h2>
-        {racketOptions.length === 0 ? (
+        {racketOptions.length === 0 && !editingId ? (
           <p className="text-sm text-gray-500 dark:text-slate-400">先に「ラケット」タブでラケットを登録してください（アーカイブ済みのみの場合は使用中に戻してください）。</p>
         ) : (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4 sm:grid-cols-2">

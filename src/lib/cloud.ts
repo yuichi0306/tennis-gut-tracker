@@ -3,6 +3,7 @@ import { db } from './firebase';
 import { resolveSettings } from './settings';
 import { normalizeRacket } from './racket';
 import { normalizeShoe } from './shoe';
+import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
 import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
@@ -17,6 +18,7 @@ export interface CloudData {
   packing: PackingItem[];
   settings: RestringSettings;
   roster: RosterPlayer[];
+  matchmaker: SavedSchedule | null; // 生成した対戦表（未作成・クリア後は null）
   updatedAt: number; // 最終更新時刻(ms)
 }
 
@@ -37,6 +39,7 @@ function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'update
     packing: arr<PackingItem>(raw?.packing),
     settings: resolveSettings(raw?.settings),
     roster: arr<RosterPlayer>(raw?.roster),
+    matchmaker: normalizeSavedSchedule(raw?.matchmaker),
   };
 }
 
