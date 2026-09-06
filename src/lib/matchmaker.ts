@@ -259,3 +259,72 @@ export function formatScheduleText(schedule: Schedule, nameOf: (id: string) => s
   lines.push(playCounts(schedule).map((p) => `${nameOf(p.id)}: ${p.games}`).join(' / '));
   return lines.join('\n');
 }
+
+// ---- 保存（作った対戦表を残す） ----
+
+// 生成した対戦表の保存データ。「クリア」を押すまで残り、端末間でも同期する。
+export interface SavedSchedule {
+  schedule: Schedule;
+  names: Record<string, string>; // 生成時点の名前の控え（名簿から消えた人の表示用）
+  createdAt: string; // ISO datetime（作成日時。未設定は ''）
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+// localStorage・クラウドから読んだ保存データを検証して取り込む。
+// 壊れていたり中身が空なら null（＝対戦表なし）を返す。
+export function normalizeSavedSchedule(raw: unknown): SavedSchedule | null {
+  const saved = asRecord(raw);
+  const sched = saved && asRecord(saved.schedule);
+  if (!saved || !sched) return null;
+
+  const playerIds = asStringArray(sched.playerIds);
+  const courts = Math.floor(Number(sched.courts));
+  if (playerIds.length === 0 || !Number.isFinite(courts) || courts < 1) return null;
+  if (!Array.isArray(sched.rounds)) return null;
+
+  const rounds: Round[] = sched.rounds.map((r, i): Round => {
+    const round = asRecord(r);
+    const matches = Array.isArray(round?.matches) ? round.matches : [];
+    return {
+      index: typeof round?.index === 'number' ? round.index : i,
+      matches: matches
+        .map((m): Match => {
+          const mt = asRecord(m);
+          return {
+            court: Math.floor(Number(mt?.court)) || 0,
+            team1: asStringArray(mt?.team1),
+            team2: asStringArray(mt?.team2),
+          };
+        })
+        .filter((m) => m.team1.length > 0 && m.team2.length > 0),
+      resting: asStringArray(round?.resting),
+    };
+  });
+  if (rounds.length === 0) return null;
+
+  const names: Record<string, string> = {};
+  const rawNames = asRecord(saved.names);
+  if (rawNames) {
+    for (const [id, name] of Object.entries(rawNames)) {
+      if (typeof name === 'string') names[id] = name;
+    }
+  }
+
+  return {
+    schedule: {
+      mode: sched.mode === 'singles' ? 'singles' : 'doubles',
+      playerIds,
+      courts,
+      rounds,
+    },
+    names,
+    createdAt: typeof saved.createdAt === 'string' ? saved.createdAt : '',
+  };
+}

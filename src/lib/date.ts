@@ -17,6 +17,27 @@ export function parseISODateLocal(dateISO: string): Date {
   return new Date(y, m - 1, d);
 }
 
+// 購入日などからの経過を「◯年◯ヶ月」で返す。1ヶ月未満は「◯日」。
+// 未入力（''）や未来の日付なら null を返す。
+export function elapsedLabel(dateISO: string, today: string = todayISO()): string | null {
+  if (!dateISO) return null;
+  const from = parseISODateLocal(dateISO);
+  const now = parseISODateLocal(today);
+  if (Number.isNaN(from.getTime()) || from.getTime() > now.getTime()) return null;
+
+  // 月数は「日にちが来ていなければ1ヶ月引く」で数える（例: 1/31→2/28 は0ヶ月）
+  let months = (now.getFullYear() - from.getFullYear()) * 12 + (now.getMonth() - from.getMonth());
+  if (now.getDate() < from.getDate()) months -= 1;
+  if (months < 1) {
+    const days = Math.floor((now.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+    return `${days}日`;
+  }
+  const years = Math.floor(months / 12);
+  const restMonths = months % 12;
+  if (years === 0) return `${restMonths}ヶ月`;
+  return restMonths === 0 ? `${years}年` : `${years}年${restMonths}ヶ月`;
+}
+
 // YYYY-MM-DD に日数を足した YYYY-MM-DD を返す（マイナスも可）。月またぎは Date に任せる。
 export function addDaysISO(dateISO: string, days: number): string {
   const d = parseISODateLocal(dateISO);

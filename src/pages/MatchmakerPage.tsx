@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useData } from '../context/DataContext';
 import type { RosterPlayer } from '../types';
 import {
@@ -11,17 +11,40 @@ import {
   type Schedule,
 } from '../lib/matchmaker';
 
+// 保存された作成日時を「8月21日 20:15 作成」のように表示する。
+function createdLabel(createdAt: string): string | null {
+  if (!createdAt) return null;
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return null;
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${time} 作成`;
+}
+
 export default function MatchmakerPage() {
-  const { roster, setRoster } = useData();
+  const { roster, setRoster, matchmaker, setMatchmaker } = useData();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newName, setNewName] = useState('');
   const [mode, setMode] = useState<MatchMode>('doubles');
   const [courts, setCourts] = useState('2');
   const [rounds, setRounds] = useState('4');
-  const [schedule, setSchedule] = useState<Schedule | null>(null);
-  // 生成時点の名前の控え。あとで名簿から消された人も、表示済みのラウンドでは名前が出る。
-  const [snapshotNames, setSnapshotNames] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+
+  // 対戦表そのものは保存データ（端末間で同期・クリアするまで残る）から読む。
+  const schedule = matchmaker?.schedule ?? null;
+  // 生成時点の名前の控え。あとで名簿から消された人も、表示済みのラウンドでは名前が出る。
+  const snapshotNames = matchmaker?.names ?? {};
+
+  // 保存された対戦表を最初に読み込んだとき、設定欄をその内容に合わせる。
+  // こうしないと、アプリを開き直した直後に「再生成」できない。
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !matchmaker) return;
+    restoredRef.current = true;
+    setMode(matchmaker.schedule.mode);
+    setCourts(String(matchmaker.schedule.courts));
+    setRounds(String(matchmaker.schedule.rounds.length));
+    setSelected(new Set(matchmaker.schedule.playerIds));
+  }, [matchmaker]);
 
   const nameMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -69,16 +92,29 @@ export default function MatchmakerPage() {
     setSelected(on ? new Set(roster.map((p) => p.id)) : new Set());
   }
 
+  // 対戦表を保存する（クリアするまで残り、ログイン中なら他の端末にも届く）。
+  // createdAt は作った時刻。ラウンド追加のときは最初に作った時刻を引き継ぐ。
+  function save(next: Schedule, names: Record<string, string>, createdAt = new Date().toISOString()) {
+    setMatchmaker(() => ({ schedule: next, names, createdAt }));
+    setCopied(false);
+  }
+
   function generate() {
     if (!canGenerate) return;
-    setSchedule(generateSchedule(selectedIds, Number(courts), mode, Number(rounds)));
-    setSnapshotNames(Object.fromEntries(selectedIds.map((id) => [id, nameOf(id)])));
-    setCopied(false);
+    save(
+      generateSchedule(selectedIds, Number(courts), mode, Number(rounds)),
+      Object.fromEntries(selectedIds.map((id) => [id, nameOf(id)])),
+    );
   }
 
   function addRound() {
     if (!schedule || !canAddRound) return;
-    setSchedule(extendSchedule({ ...schedule, playerIds: remainingIds }, 1));
+    save(extendSchedule({ ...schedule, playerIds: remainingIds }, 1), snapshotNames, matchmaker?.createdAt);
+  }
+
+  function clearSchedule() {
+    if (!confirm('この対戦表をクリアしますか？（参加者の名簿は消えません）')) return;
+    setMatchmaker(() => null);
     setCopied(false);
   }
 
@@ -228,7 +264,14 @@ export default function MatchmakerPage() {
             <button onClick={copy} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
               {copied ? 'コピーしました' : 'コピー'}
             </button>
+            <button onClick={clearSchedule} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">
+              クリア
+            </button>
           </div>
+          <p className="text-xs text-gray-400 dark:text-slate-500">
+            {createdLabel(matchmaker?.createdAt ?? '') && <span className="mr-2">{createdLabel(matchmaker?.createdAt ?? '')}</span>}
+            この対戦表は「クリア」を押すまで残ります（ログイン中なら他の端末にも表示されます）。
+          </p>
 
           <ul className="space-y-3">
             {schedule.rounds.map((round) => (

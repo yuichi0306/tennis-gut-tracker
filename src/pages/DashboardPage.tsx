@@ -9,6 +9,7 @@ import { useRestringSummary } from '../hooks/useRestringSummary';
 import { getRestringInfo, type RestringStatus } from '../lib/restring';
 import { getRestringForecast, forecastText, forecastReason } from '../lib/forecast';
 import { canNotify, notifyPermission, requestNotifyPermission } from '../lib/notify';
+import { activeRackets } from '../lib/racket';
 
 const BANNER_DISMISS_KEY = 'tennis-tracker:restring-banner-dismissed';
 
@@ -45,12 +46,19 @@ export default function DashboardPage() {
     setPermission(result);
   }
 
-  if (rackets.length === 0) {
+  // アーカイブしたラケットはダッシュボードに出さない（記録は残っている）
+  const shown = activeRackets(rackets);
+
+  if (shown.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-6 text-center">
-        <p className="mb-3 text-gray-600 dark:text-slate-300">まだラケットが登録されていません。</p>
+        <p className="mb-3 text-gray-600 dark:text-slate-300">
+          {rackets.length === 0
+            ? 'まだラケットが登録されていません。'
+            : '使用中のラケットがありません。アーカイブしたラケットは「ラケット」タブで戻せます。'}
+        </p>
         <Link to="/rackets" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
-          ラケットを登録する
+          {rackets.length === 0 ? 'ラケットを登録する' : 'ラケット一覧へ'}
         </Link>
       </div>
     );
@@ -101,7 +109,7 @@ export default function DashboardPage() {
       )}
 
       <ul className="space-y-3">
-        {rackets.map((racket) => {
+        {shown.map((racket) => {
           const info = getRestringInfo(racket.id, records, sessions, settings, matches);
           const forecast = getRestringForecast(info, racket.id, sessions, matches);
           const style = statusStyles[info.status];

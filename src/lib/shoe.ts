@@ -6,6 +6,24 @@ export const SHOE_SURFACES: ShoeSurface[] = ['オールコート', 'オムニ・
 
 export type ShoeStatus = 'ok' | 'warning' | 'overdue';
 
+// アーカイブ(archived)を足す前に保存されたシューズには、この項目が無い。
+// 読み込み時に false で補完する（Firestore は undefined を保存できない）。
+export function normalizeShoe(s: Shoe): Shoe {
+  return { ...s, archived: s.archived === true };
+}
+
+// 使用中のシューズ（アーカイブしていないもの）だけを返す。記録の入力欄で使う。
+export function activeShoes(shoes: Shoe[]): Shoe[] {
+  return shoes.filter((s) => !s.archived);
+}
+
+// 入力欄の選択肢に出す予備のラベル。
+// アーカイブ済み・削除済みのシューズを選んでいた記録を編集したとき、選択が消えないようにする。
+export function pastShoeLabel(shoes: Shoe[], id: string): string {
+  const shoe = shoes.find((s) => s.id === id);
+  return shoe ? `${shoe.name}（アーカイブ済み）` : '(削除済みシューズ)';
+}
+
 export interface ShoeUsage {
   hoursPlayed: number; // このシューズで練習・試合した合計時間
   sessionCount: number; // 履いた回数（練習＋試合）

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
+import { activeRackets, pastRacketLabel } from '../lib/racket';
 import { useStringingRecords } from '../hooks/useStringingRecords';
 import type { GutType } from '../types';
 import type { StringingRecord } from '../types';
@@ -12,6 +13,9 @@ const gutTypes: GutType[] = ['ポリエステル', 'ナイロン（合成繊維�
 
 export default function StringingPage() {
   const { rackets } = useRackets();
+  // 記録の入力欄にはアーカイブしていないラケットだけを出す
+  // （編集中は、使用中のラケットが無くてもフォームを出す。既存記録を直せなくなるのを防ぐため）
+  const racketOptions = activeRackets(rackets);
   const { records, addRecord, updateRecord, deleteRecord } = useStringingRecords();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -130,17 +134,21 @@ export default function StringingPage() {
     <div className="space-y-6">
       <section>
         <h2 className="mb-2 text-xl font-bold">{editingId ? 'ガット張り替えを編集' : 'ガット張り替えを記録'}</h2>
-        {rackets.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">先に「ラケット」タブでラケットを登録してください。</p>
+        {racketOptions.length === 0 && !editingId ? (
+          <p className="text-sm text-gray-500 dark:text-slate-400">先に「ラケット」タブでラケットを登録してください（アーカイブ済みのみの場合は使用中に戻してください）。</p>
         ) : (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               ラケット
               <select value={racketId} onChange={(e) => setRacketId(e.target.value)} className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5" required>
                 <option value="">選択してください</option>
-                {rackets.map((r) => (
+                {racketOptions.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
+                {/* アーカイブ済み・削除済みのラケットを選んでいた記録を編集しても、選択が消えないようにする */}
+                {racketId && !racketOptions.some((r) => r.id === racketId) && (
+                  <option value={racketId}>{pastRacketLabel(rackets, racketId)}</option>
+                )}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">

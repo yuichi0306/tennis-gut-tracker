@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useShoes } from '../hooks/useShoes';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import { useMatches } from '../hooks/useMatches';
@@ -30,6 +31,9 @@ const statusStyles: Record<ShoeStatus, { label: string; card: string; badge: str
   },
 };
 
+// アーカイブ済みのカード（買い替えの色をやめて落ち着いた見た目にする）
+const archivedCard = 'border-gray-200 bg-gray-50 opacity-80 dark:border-slate-700 dark:bg-slate-800/60';
+
 // 購入日からの経過日数（購入日が未入力なら null）
 function daysSince(purchaseDate: string): number | null {
   if (!purchaseDate) return null;
@@ -37,7 +41,7 @@ function daysSince(purchaseDate: string): number | null {
 }
 
 export default function ShoesPage() {
-  const { shoes, addShoe, updateShoe, deleteShoe } = useShoes();
+  const { shoes, addShoe, updateShoe, setShoeArchived, deleteShoe } = useShoes();
   const { sessions } = usePracticeSessions();
   const { matches } = useMatches();
   const { settings } = useSettings();
@@ -86,12 +90,96 @@ export default function ShoesPage() {
     resetForm();
   }
 
+  const active = shoes.filter((s) => !s.archived);
+  const archived = shoes.filter((s) => s.archived);
+
+  // 使用中／アーカイブ済みで同じ見た目を使う。アーカイブ済みは買い替え判定の代わりに
+  // 「アーカイブ済み」バッジを出し、使用時間はそのまま見せる。
+  function renderShoe(shoe: Shoe) {
+    const usage = getShoeUsage(shoe, sessions, settings.shoeHours, matches);
+    const style = statusStyles[usage.status];
+    const pct = Math.min((usage.hoursPlayed / settings.shoeHours) * 100, 100);
+    const days = daysSince(shoe.purchaseDate);
+    return (
+      <li key={shoe.id} className={`rounded-xl border p-4 shadow-sm ${shoe.archived ? archivedCard : style.card}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <Link to={`/shoe/${shoe.id}`} className="font-semibold hover:underline">
+              {shoe.name}
+            </Link>
+            <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-slate-400">
+              {shoe.surface && <span>{shoe.surface}</span>}
+              {shoe.price > 0 && <span>{formatYen(shoe.price)}</span>}
+              {days !== null && <span>購入から{days}日</span>}
+            </p>
+          </div>
+          {shoe.archived ? (
+            <span className="shrink-0 rounded-full border border-gray-300 px-3 py-0.5 text-xs font-medium text-gray-500 dark:border-slate-600 dark:text-slate-400">
+              アーカイブ済み
+            </span>
+          ) : (
+            <span className={`shrink-0 rounded-full border px-3 py-0.5 text-xs font-medium ${style.badge}`}>{style.label}</span>
+          )}
+        </div>
+
+        <div className="mt-3">
+          <div className="mb-1 flex items-baseline justify-between text-sm">
+            <span className="text-gray-600 dark:text-slate-300">
+              使用時間 約{usage.hoursPlayed.toFixed(1)}時間 / 基準{settings.shoeHours}時間
+            </span>
+            <span className="text-xs text-gray-500 dark:text-slate-400">{usage.sessionCount}回</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded bg-gray-100 dark:bg-slate-700">
+            <div className={`h-full rounded ${shoe.archived ? 'bg-gray-400' : style.bar}`} style={{ width: `${Math.max(pct, 2)}%` }} />
+          </div>
+          {usage.costPerHour !== null && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+              1時間あたり {formatYen(usage.costPerHour)}
+            </p>
+          )}
+        </div>
+
+        {shoe.notes && <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">メモ: {shoe.notes}</p>}
+
+        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+          <Link to={`/shoe/${shoe.id}`} className="text-emerald-700 hover:underline dark:text-emerald-400">
+            タイムライン
+          </Link>
+          <button onClick={() => startEdit(shoe)} className="text-emerald-700 hover:underline dark:text-emerald-400">
+            編集
+          </button>
+          <button
+            onClick={() => {
+              if (editingId === shoe.id) resetForm();
+              setShoeArchived(shoe.id, !shoe.archived);
+            }}
+            className="text-gray-600 hover:underline dark:text-slate-300"
+          >
+            {shoe.archived ? '使用中に戻す' : 'アーカイブ'}
+          </button>
+          <button
+            onClick={() => {
+              if (confirm(`「${shoe.name}」を削除しますか？練習記録は残りますが、シューズ名は表示できなくなります。\n履かなくなっただけなら「アーカイブ」がおすすめです。`)) {
+                if (editingId === shoe.id) resetForm();
+                deleteShoe(shoe.id);
+              }
+            }}
+            className="text-red-600 hover:underline dark:text-red-400"
+          >
+            削除
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold">{editingId ? 'シューズを編集' : 'シューズを登録'}</h2>
         <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">
           練習記録で履いたシューズを選ぶと、使用時間が自動で積み上がり、買い替え時期をお知らせします。
+          履かなくなったシューズは、削除ではなく「アーカイブ」にすると記録を残したまま片付けられます。
         </p>
       </div>
 
@@ -141,70 +229,27 @@ export default function ShoesPage() {
       </form>
 
       <section>
-        <h2 className="mb-2 text-xl font-bold">登録済みシューズ</h2>
-        {shoes.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">まだシューズが登録されていません。</p>
+        <h2 className="mb-2 text-xl font-bold">使用中のシューズ</h2>
+        {active.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            {shoes.length === 0
+              ? 'まだシューズが登録されていません。'
+              : '使用中のシューズがありません。下のアーカイブから戻せます。'}
+          </p>
         ) : (
-          <ul className="space-y-3">
-            {shoes.map((shoe) => {
-              const usage = getShoeUsage(shoe, sessions, settings.shoeHours, matches);
-              const style = statusStyles[usage.status];
-              const pct = Math.min((usage.hoursPlayed / settings.shoeHours) * 100, 100);
-              const days = daysSince(shoe.purchaseDate);
-              return (
-                <li key={shoe.id} className={`rounded-xl border p-4 shadow-sm ${style.card}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold">{shoe.name}</p>
-                      <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-slate-400">
-                        {shoe.surface && <span>{shoe.surface}</span>}
-                        {shoe.price > 0 && <span>{formatYen(shoe.price)}</span>}
-                        {days !== null && <span>購入から{days}日</span>}
-                      </p>
-                    </div>
-                    <span className={`shrink-0 rounded-full border px-3 py-0.5 text-xs font-medium ${style.badge}`}>{style.label}</span>
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="mb-1 flex items-baseline justify-between text-sm">
-                      <span className="text-gray-600 dark:text-slate-300">
-                        使用時間 約{usage.hoursPlayed.toFixed(1)}時間 / 基準{settings.shoeHours}時間
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-slate-400">{usage.sessionCount}回</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded bg-gray-100 dark:bg-slate-700">
-                      <div className={`h-full rounded ${style.bar}`} style={{ width: `${Math.max(pct, 2)}%` }} />
-                    </div>
-                    {usage.costPerHour !== null && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                        1時間あたり {formatYen(usage.costPerHour)}
-                      </p>
-                    )}
-                  </div>
-
-                  {shoe.notes && <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">メモ: {shoe.notes}</p>}
-
-                  <div className="mt-3 flex gap-3 text-sm">
-                    <button onClick={() => startEdit(shoe)} className="text-emerald-700 hover:underline dark:text-emerald-400">
-                      編集
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`「${shoe.name}」を削除しますか？練習記録は残りますが、シューズ名は表示できなくなります。`)) {
-                          if (editingId === shoe.id) resetForm();
-                          deleteShoe(shoe.id);
-                        }
-                      }}
-                      className="text-red-600 hover:underline dark:text-red-400"
-                    >
-                      削除
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className="space-y-3">{active.map(renderShoe)}</ul>
         )}
+
+        {archived.length > 0 && (
+          <>
+            <h2 className="mb-2 mt-6 text-xl font-bold">アーカイブ済み（{archived.length}足）</h2>
+            <p className="mb-2 text-sm text-gray-600 dark:text-slate-300">
+              使用時間はそのまま残っています。買い替えのお知らせと、記録を追加するときの選択肢からは外れます。
+            </p>
+            <ul className="space-y-3">{archived.map(renderShoe)}</ul>
+          </>
+        )}
+
         {shoes.length > 0 && (
           <p className="mt-3 text-xs text-gray-400 dark:text-slate-500">
             使用時間の合計は、練習・試合でそのシューズを選んだ分だけ積み上がります（累計 {formatMinutes(

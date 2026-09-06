@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
+import { activeRackets, pastRacketLabel } from '../lib/racket';
+import { activeShoes, pastShoeLabel } from '../lib/shoe';
 import { useShoes } from '../hooks/useShoes';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
 import type { PracticeSession, TensionFeel } from '../types';
@@ -9,7 +11,12 @@ import { TENSION_FEELS, tensionFeelLabel, tensionFeelClass } from '../lib/tensio
 
 export default function PracticePage() {
   const { rackets } = useRackets();
+  // 記録の入力欄にはアーカイブしていないラケットだけを出す
+  // （編集中は、使用中のラケットが無くてもフォームを出す。既存記録を直せなくなるのを防ぐため）
+  const racketOptions = activeRackets(rackets);
   const { shoes } = useShoes();
+  // シューズも同じく、アーカイブしていないものだけを選択肢に出す
+  const shoeOptions = activeShoes(shoes);
   const { sessions, addSession, updateSession, deleteSession } = usePracticeSessions();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,29 +104,33 @@ export default function PracticePage() {
     <div className="space-y-6">
       <section>
         <h2 className="mb-2 text-xl font-bold">{editingId ? '練習記録を編集' : '練習記録を追加'}</h2>
-        {rackets.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">先に「ラケット」タブでラケットを登録してください。</p>
+        {racketOptions.length === 0 && !editingId ? (
+          <p className="text-sm text-gray-500 dark:text-slate-400">先に「ラケット」タブでラケットを登録してください（アーカイブ済みのみの場合は使用中に戻してください）。</p>
         ) : (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               ラケット
               <select value={racketId} onChange={(e) => setRacketId(e.target.value)} className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5" required>
                 <option value="">選択してください</option>
-                {rackets.map((r) => (
+                {racketOptions.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
+                {/* アーカイブ済み・削除済みのラケットを選んでいた記録を編集しても、選択が消えないようにする */}
+                {racketId && !racketOptions.some((r) => r.id === racketId) && (
+                  <option value={racketId}>{pastRacketLabel(rackets, racketId)}</option>
+                )}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
               シューズ（任意）
               <select value={shoeId} onChange={(e) => setShoeId(e.target.value)} className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5">
                 <option value="">未選択</option>
-                {shoes.map((s) => (
+                {shoeOptions.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-                {/* 削除済みシューズを選んでいた記録を編集しても、選択が消えないようにする */}
-                {shoeId && !shoes.some((s) => s.id === shoeId) && (
-                  <option value={shoeId}>(削除済みシューズ)</option>
+                {/* アーカイブ済み・削除済みのシューズを選んでいた記録を編集しても、選択が消えないようにする */}
+                {shoeId && !shoeOptions.some((s) => s.id === shoeId) && (
+                  <option value={shoeId}>{pastShoeLabel(shoes, shoeId)}</option>
                 )}
               </select>
             </label>

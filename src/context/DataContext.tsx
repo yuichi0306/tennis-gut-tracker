@@ -9,7 +9,8 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { readCloud, writeCloud, subscribeCloud, type CloudData } from '../lib/cloud';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, settingsStorage, rosterStorage, syncMeta } from '../lib/storage';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from '../lib/storage';
+import type { SavedSchedule } from '../lib/matchmaker';
 import { DEFAULT_SETTINGS } from '../lib/settings';
 import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
 
@@ -27,6 +28,7 @@ interface DataContextValue {
   packing: PackingItem[];
   settings: RestringSettings;
   roster: RosterPlayer[];
+  matchmaker: SavedSchedule | null; // 生成した対戦表（クリアするまで残る）
   setRackets: (updater: Updater<Racket[]>) => void;
   setShoes: (updater: Updater<Shoe[]>) => void;
   setStringingRecords: (updater: Updater<StringingRecord[]>) => void;
@@ -36,6 +38,7 @@ interface DataContextValue {
   setPacking: (updater: Updater<PackingItem[]>) => void;
   setSettings: (updater: Updater<RestringSettings>) => void;
   setRoster: (updater: Updater<RosterPlayer[]>) => void;
+  setMatchmaker: (updater: Updater<SavedSchedule | null>) => void;
   // 認証・同期
   user: User | null;
   authReady: boolean;
@@ -67,6 +70,8 @@ function mergeLocalAndCloud(local: LocalData, cloud: LocalData): LocalData {
     roster: mergeById(local.roster, cloud.roster),
     // 設定はクラウド側を優先（無ければローカル）
     settings: cloud.settings ?? local.settings,
+    // 対戦表は1件だけなので結合できない。クラウド側を優先（無ければローカル）
+    matchmaker: cloud.matchmaker ?? local.matchmaker,
   };
 }
 
@@ -80,6 +85,7 @@ const EMPTY_DATA: LocalData = {
   packing: [],
   settings: DEFAULT_SETTINGS,
   roster: [],
+  matchmaker: null,
 };
 
 // ログイン時にローカルとクラウドをどう統合するかを決める。
@@ -105,6 +111,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [practiceSessions, setPracticeState] = useState<PracticeSession[]>([]);
   const [settings, setSettingsState] = useState<RestringSettings>(DEFAULT_SETTINGS);
   const [roster, setRosterState] = useState<RosterPlayer[]>([]);
+  const [matchmaker, setMatchmakerState] = useState<SavedSchedule | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -121,6 +128,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     packing: [],
     settings: DEFAULT_SETTINGS,
     roster: [],
+    matchmaker: null,
   });
 
   // 起動時にローカルから読み込む（未ログイン・オフラインでもそのまま動く）
@@ -135,6 +143,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       packing: packingStorage.getAll(),
       settings: settingsStorage.get(),
       roster: rosterStorage.getAll(),
+      matchmaker: matchmakerStorage.get(),
     };
     dataRef.current = local;
     setRacketsState(local.rackets);
@@ -146,6 +155,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setPackingState(local.packing);
     setSettingsState(local.settings);
     setRosterState(local.roster);
+    setMatchmakerState(local.matchmaker);
   }, []);
 
   // クラウドから来たデータを画面とローカルに反映する（クラウドへは書き戻さない）
@@ -160,6 +170,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setPackingState(d.packing);
     setSettingsState(d.settings);
     setRosterState(d.roster);
+    setMatchmakerState(d.matchmaker);
     racketStorage.save(d.rackets);
     shoeStorage.save(d.shoes);
     stringingStorage.save(d.stringingRecords);
@@ -169,6 +180,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     packingStorage.save(d.packing);
     settingsStorage.save(d.settings);
     rosterStorage.save(d.roster);
+    matchmakerStorage.save(d.matchmaker);
   }
 
   // 現在の全データをクラウドへ反映する（ログイン中のみ）
@@ -295,6 +307,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     pushCloud();
   };
 
+  const setMatchmaker = (updater: Updater<SavedSchedule | null>) => {
+    const next = updater(dataRef.current.matchmaker);
+    dataRef.current = { ...dataRef.current, matchmaker: next };
+    setMatchmakerState(next);
+    matchmakerStorage.save(next);
+    pushCloud();
+  };
+
   async function signIn() {
     // まずポップアップ。モバイルのPWA等でポップアップが使えない場合はリダイレクトへ切替。
     try {
@@ -324,6 +344,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         packing,
         settings,
         roster,
+        matchmaker,
         setRackets,
         setShoes,
         setMatches,
@@ -333,6 +354,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setPracticeSessions,
         setSettings,
         setRoster,
+        setMatchmaker,
         user,
         authReady,
         syncing,

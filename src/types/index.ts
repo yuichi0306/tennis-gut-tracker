@@ -2,7 +2,9 @@
 export interface Racket {
   id: string;
   name: string; // 例: Wilson Blade 98 v8
-  createdAt: string; // ISO date
+  purchaseDate: string; // 購入日（ISO date。未入力は ''。購入日対応より前のデータは読み込み時に '' で補完）
+  archived: boolean; // アーカイブ（もう使わないラケット。記録は残したまま入力欄・ダッシュボードから外す）
+  createdAt: string; // ISO date（アプリに登録した日時。購入日とは別）
 }
 
 // ガットの種類
@@ -37,6 +39,7 @@ export interface Shoe {
   purchaseDate: string; // 購入日（ISO date。未入力は ''）
   price: number; // 購入価格（円。未入力は 0）
   surface: ShoeSurface | ''; // 対応コート（未選択は ''）
+  archived: boolean; // アーカイブ（もう履かないシューズ。記録は残したまま入力欄・買い替え判定から外す）
   notes: string;
   createdAt: string; // ISO datetime
 }

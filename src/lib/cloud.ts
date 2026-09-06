@@ -1,6 +1,9 @@
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { resolveSettings } from './settings';
+import { normalizeRacket } from './racket';
+import { normalizeShoe } from './shoe';
+import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
 import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
@@ -15,6 +18,7 @@ export interface CloudData {
   packing: PackingItem[];
   settings: RestringSettings;
   roster: RosterPlayer[];
+  matchmaker: SavedSchedule | null; // 生成した対戦表（未作成・クリア後は null）
   updatedAt: number; // 最終更新時刻(ms)
 }
 
@@ -26,8 +30,8 @@ function userDoc(uid: string) {
 function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'updatedAt'> {
   const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   return {
-    rackets: arr<Racket>(raw?.rackets),
-    shoes: arr<Shoe>(raw?.shoes),
+    rackets: arr<Racket>(raw?.rackets).map(normalizeRacket),
+    shoes: arr<Shoe>(raw?.shoes).map(normalizeShoe),
     stringingRecords: arr<StringingRecord>(raw?.stringingRecords),
     practiceSessions: arr<PracticeSession>(raw?.practiceSessions),
     matches: arr<MatchRecord>(raw?.matches),
@@ -35,6 +39,7 @@ function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'update
     packing: arr<PackingItem>(raw?.packing),
     settings: resolveSettings(raw?.settings),
     roster: arr<RosterPlayer>(raw?.roster),
+    matchmaker: normalizeSavedSchedule(raw?.matchmaker),
   };
 }
 
