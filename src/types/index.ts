@@ -29,6 +29,10 @@ export interface StringingRecord {
 // ガットのテンション体感（張りたて→へたり）
 export type TensionFeel = 'tight' | 'ok' | 'loose';
 
+// 練習・試合をしたコートのサーフェス。
+// シューズの「対応コート」(ShoeSurface) とは選択肢が違うので別の型にしている。
+export type CourtSurface = 'ハード' | 'オムニ' | 'クレー' | 'カーペット';
+
 // テニスシューズの対応コート（サーフェス）
 export type ShoeSurface = 'オールコート' | 'オムニ・クレー' | 'ハード' | 'クレー' | 'カーペット';
 
@@ -51,6 +55,8 @@ export interface PracticeSession {
   shoeId?: string; // 履いたシューズ（未選択は ''）
   date: string; // ISO date
   durationMinutes: number;
+  courtName?: string; // コート名（自由入力。未入力は ''）
+  surface?: CourtSurface | ''; // 練習したコートのサーフェス（未選択は ''）
   tensionFeel?: TensionFeel | ''; // その日のテンション体感（任意）
   notes: string;
 }
@@ -76,6 +82,8 @@ export interface MatchRecord {
   partner?: string; // ダブルスの味方（未入力は ''）
   sets: MatchSet[]; // セットごとのゲームスコア（0-0の空セットは無視）
   durationMinutes: number; // 試合時間（使用時間へ加算）
+  courtName?: string; // コート名（自由入力。未入力は ''）
+  surface?: CourtSurface | ''; // 試合をしたコートのサーフェス（未選択は ''）
   notes: string;
 }
 

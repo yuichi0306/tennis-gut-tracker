@@ -54,6 +54,8 @@ export default function ShoeDetailPage() {
     durationMinutes: number;
     racketId: string;
     label: string; // 試合の勝敗・スコア（練習は空）
+    courtName: string;
+    surface: string;
     tensionFeel?: string;
     notes: string;
   };
@@ -66,6 +68,8 @@ export default function ShoeDetailPage() {
       durationMinutes: p.durationMinutes,
       racketId: p.racketId,
       label: '',
+      courtName: p.courtName ?? '',
+      surface: p.surface ?? '',
       tensionFeel: p.tensionFeel,
       notes: p.notes,
     })),
@@ -77,6 +81,8 @@ export default function ShoeDetailPage() {
       durationMinutes: m.durationMinutes,
       racketId: m.racketId,
       label: `${resultLabel(matchResult(m.sets))} ${formatScore(m.sets)} vs ${m.opponent}`,
+      courtName: m.courtName ?? '',
+      surface: m.surface ?? '',
       notes: m.notes,
     })),
   ];
@@ -186,6 +192,12 @@ export default function ShoeDetailPage() {
                     <span className="text-gray-500 dark:text-slate-400">{formatMinutes(ev.durationMinutes)}</span>
                     {/* 行頭の 🎾/🏆 は練習・試合の印なので、ラケット名は絵文字なしで出す */}
                     <span className="text-gray-500 dark:text-slate-400">ラケット: {racketName(ev.racketId)}</span>
+                    {ev.courtName && <span className="text-gray-500 dark:text-slate-400">📍 {ev.courtName}</span>}
+                    {ev.surface && (
+                      <span className="rounded border border-gray-300 px-1.5 py-0.5 text-xs text-gray-600 dark:border-slate-600 dark:text-slate-300">
+                        {ev.surface}
+                      </span>
+                    )}
                     {ev.tensionFeel && (
                       <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tensionFeelClass(ev.tensionFeel as never)}`}>
                         {tensionFeelLabel(ev.tensionFeel as never)}

@@ -67,8 +67,8 @@ export default function RacketDetailPage() {
   // タイムライン（新しい順）
   type Ev =
     | { kind: 'string'; date: string; sortKey: string; rec: StringingRecord }
-    | { kind: 'practice'; date: string; sortKey: string; id: string; durationMinutes: number; tensionFeel?: string; notes: string }
-    | { kind: 'match'; date: string; sortKey: string; id: string; durationMinutes: number; label: string; notes: string };
+    | { kind: 'practice'; date: string; sortKey: string; id: string; durationMinutes: number; courtName: string; surface: string; tensionFeel?: string; notes: string }
+    | { kind: 'match'; date: string; sortKey: string; id: string; durationMinutes: number; label: string; courtName: string; surface: string; notes: string };
   const events: Ev[] = [
     ...stringingsAsc.map((r): Ev => ({ kind: 'string', date: r.date, sortKey: `${r.date}-0`, rec: r })),
     ...practices.map((s): Ev => ({
@@ -77,6 +77,8 @@ export default function RacketDetailPage() {
       sortKey: `${s.date}-1`,
       id: s.id,
       durationMinutes: s.durationMinutes,
+      courtName: s.courtName ?? '',
+      surface: s.surface ?? '',
       tensionFeel: s.tensionFeel,
       notes: s.notes,
     })),
@@ -87,6 +89,8 @@ export default function RacketDetailPage() {
       id: m.id,
       durationMinutes: m.durationMinutes,
       label: `${resultLabel(matchResult(m.sets))} ${formatScore(m.sets)} vs ${m.opponent}`,
+      courtName: m.courtName ?? '',
+      surface: m.surface ?? '',
       notes: m.notes,
     })),
   ].sort((a, b) => b.sortKey.localeCompare(a.sortKey));
@@ -178,6 +182,10 @@ export default function RacketDetailPage() {
                       <span className="font-semibold">🏆 {ev.date} 試合</span>
                       <span className="text-gray-600 dark:text-slate-300">{ev.label}</span>
                       <span className="text-gray-500 dark:text-slate-400">{formatMinutes(ev.durationMinutes)}</span>
+                      {ev.courtName && <span className="text-gray-500 dark:text-slate-400">📍 {ev.courtName}</span>}
+                      {ev.surface && (
+                        <span className="rounded border border-gray-300 px-1.5 py-0.5 text-xs text-gray-600 dark:border-slate-600 dark:text-slate-300">{ev.surface}</span>
+                      )}
                       {cum !== null && cum !== undefined && (
                         <span className="text-xs text-gray-400 dark:text-slate-500">張り替え後 約{cum.toFixed(1)}時間時点</span>
                       )}
@@ -192,6 +200,10 @@ export default function RacketDetailPage() {
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">🎾 {ev.date} 練習</span>
                     <span className="text-gray-600 dark:text-slate-300">{formatMinutes(ev.durationMinutes)}</span>
+                    {ev.courtName && <span className="text-gray-500 dark:text-slate-400">📍 {ev.courtName}</span>}
+                    {ev.surface && (
+                      <span className="rounded border border-gray-300 px-1.5 py-0.5 text-xs text-gray-600 dark:border-slate-600 dark:text-slate-300">{ev.surface}</span>
+                    )}
                     {ev.tensionFeel && (
                       <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tensionFeelClass(ev.tensionFeel as never)}`}>
                         {tensionFeelLabel(ev.tensionFeel as never)}

@@ -8,6 +8,7 @@
 - **参考**: アプリ紹介用に「できることガイド（A4一枚・図解入り・印刷対応）」をClaude Artifactとして作成済み（既定は非公開。リポジトリ外の生成物）。
   URL: https://claude.ai/code/artifact/713f5abb-8c3b-40e5-a3fc-ceec2a1a1a99 （更新するときは、この**URLを `url` に渡して同じ場所を上書き**する。渡さないと別URLの新規ガイドができてしまう）
   **2026-09-07時点で全機能を反映済み**（ラケットの購入日・ラケット/シューズのアーカイブ・対戦表の保存・シューズのタイムラインを含む）。機能を足したらここも追記する。
+  ⚠️ **練習・試合の「コート名」「サーフェス」はガイド未反映。** 次に更新するときに書き足す。
   A4一枚に収める前提なので、追記したら**用紙からあふれていないか確認する**（1ページ＝297mm。現状は下に約8mmの余白）。
   カードを増やすとあふれるので、**既存カードの本文とタグに書き足す**のが安全。確認は「ローカルの `public/` に一時コピー →
   `http://localhost:5173/<ファイル名>` で開いて `.sheet` の高さと `.foot` の下端を測る → 一時ファイルを消す」でできる。
@@ -92,6 +93,7 @@ src/
     date.ts                ローカルTZの日付ユーティリティ（todayISO / addDaysISO 等）
     cost.ts                費用の合算・¥表示（recordCost, formatYen）
     tensionFeel.ts         テンション体感の選択肢・ラベル・色
+    surface.ts             練習・試合のコートのサーフェス一覧（COURT_SURFACES）
     notify.ts              ブラウザ通知・アプリアイコンバッジ
     firebase.ts            Firebase 初期化・設定（apiKey もここ）
     cloud.ts               Firestore 入出力（users/{uid} の read/write/購読）
@@ -144,12 +146,13 @@ public/
 Racket           { id, name, purchaseDate, archived, createdAt }  // purchaseDate=購入日（未入力は ''）、archived=アーカイブ。createdAt はアプリへの登録日時で購入日とは別
 Shoe             { id, name, purchaseDate, price, surface, archived, notes, createdAt }  // 任意項目の未入力は ''／0（Firestoreはundefinedを保存できない）
 StringingRecord  { id, racketId, date, gutName, gutType, mainTension, crossTension, shop, gutPrice?, stringingFee?, rating?, notes }  // rating=打感★1〜5、gutPrice/stringingFee=費用（円）。いずれも任意
-PracticeSession  { id, racketId, shoeId?, date, durationMinutes, tensionFeel?, notes }  // shoeId=履いたシューズ（未選択は ''）、tensionFeel='tight'|'ok'|'loose'（任意）
-MatchRecord      { id, racketId, shoeId?, date, format, opponent, partner?, sets, durationMinutes, notes }  // format='singles'|'doubles'、sets=MatchSet[]（勝敗は自動判定）、durationMinutes=使用時間へ加算
+PracticeSession  { id, racketId, shoeId?, date, durationMinutes, courtName?, surface?, tensionFeel?, notes }  // shoeId=履いたシューズ（未選択は ''）、courtName=コート名（自由入力）、surface=コートのサーフェス、tensionFeel='tight'|'ok'|'loose'（いずれも任意）
+MatchRecord      { id, racketId, shoeId?, date, format, opponent, partner?, sets, durationMinutes, courtName?, surface?, notes }  // format='singles'|'doubles'、sets=MatchSet[]（勝敗は自動判定）、durationMinutes=使用時間へ加算、courtName/surface は練習記録と同じ
 MatchSet         { myGames, opponentGames }  // 0-0 の空セットは無視
 TensionFeel      'tight'（かたい/張りたて） | 'ok'（ちょうど） | 'loose'（ゆるい/へたり）
 GutType          'ポリエステル' | 'ナイロン（合成繊維）' | 'ナチュラル' | 'ハイブリッド'
-ShoeSurface      'オールコート' | 'オムニ・クレー' | 'ハード' | 'クレー' | 'カーペット'
+CourtSurface     'ハード' | 'オムニ' | 'クレー' | 'カーペット'  // 練習・試合をしたコート（COURT_SURFACES @ lib/surface.ts）
+ShoeSurface      'オールコート' | 'オムニ・クレー' | 'ハード' | 'クレー' | 'カーペット'  // シューズの対応コート。CourtSurface とは別物なので混同しない
 MatchFormat      'singles' | 'doubles'
 WishItem         { id, name, price, priority, bought, notes, createdAt }  // priority='high'|'mid'|'low'、price未入力は 0
 WishPriority     'high'（高） | 'mid'（中） | 'low'（低）
@@ -274,7 +277,7 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 
 ## 6.9 CSVエクスポート
 
-- 「データ」タブから **張り替え記録／練習記録／試合記録をCSVで書き出し**。`src/lib/backup.ts` の `downloadStringingCsv` / `downloadPracticeCsv` / `downloadMatchCsv`。
+- 「データ」タブから **張り替え記録／練習記録／試合記録をCSVで書き出し**（練習・試合には「コート名」「サーフェス」の列も含む）。`src/lib/backup.ts` の `downloadStringingCsv` / `downloadPracticeCsv` / `downloadMatchCsv`。
 - Excelで日本語が化けないよう **UTF-8 BOM付き**、カンマ・改行・引用符はエスケープ（`toCsv`/`csvEscape`）。
 
 ---
@@ -380,6 +383,19 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 
 ---
 
+## 6.18 コート名・サーフェス（練習・試合）
+
+- 練習記録・試合記録に **コート名（自由入力）** と **サーフェス（選択式）** を任意で残せる。実装は各ページのフォームと `src/lib/surface.ts`。
+- サーフェスの選択肢は **ハード / オムニ / クレー / カーペット**（`COURT_SURFACES`）。
+  **シューズの `ShoeSurface`（対応コート。オールコート・オムニ・クレー…）とは選択肢も意味も違うので、型を分けている。**
+  あちらは「そのシューズがどのコート向きか」、こちらは「その日どのコートでプレーしたか」。使い回さない。
+- コート名は**過去の記録からの入力候補**を出す（練習は `courtSuggestions`、試合は既存の `suggestionsFrom`＋`<datalist>`）。
+- 表示先：練習履歴・試合履歴・ラケット詳細のタイムライン・シューズ詳細のタイムライン。**履歴のキーワード検索の対象**にも入っている。
+- CSV（練習・試合）に「コート名」「サーフェス」の列を追加済み。
+- 任意項目なので、**対応前の記録には項目が無い**。読み出しは `?? ''` で受け、保存時は必ず `''` を入れる（Firestore は `undefined` を保存できない）。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。
@@ -420,4 +436,4 @@ git push origin main          # → 自動でビルド・デプロイ
 - 試合の勝率・傾向を統計ページに統合（相手別・サーフェス別・月別勝率など。現状は「試合」タブ内の集計のみ）
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え / ラケットの購入日 / ラケット・シューズのアーカイブ / 対戦表の保存 / シューズのタイムライン
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え / ラケットの購入日 / ラケット・シューズのアーカイブ / 対戦表の保存 / シューズのタイムライン / コート名・サーフェス
