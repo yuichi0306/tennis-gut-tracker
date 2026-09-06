@@ -8,6 +8,7 @@ import type { StringingRecord } from '../types';
 import { getRestringInfo } from '../lib/restring';
 import { getRestringForecast, forecastText, forecastReason } from '../lib/forecast';
 import { formatMinutes } from '../lib/stats';
+import { elapsedLabel } from '../lib/date';
 import { recordCost, formatYen } from '../lib/cost';
 import { tensionFeelLabel, tensionFeelClass } from '../lib/tensionFeel';
 import { matchResult, resultLabel, formatScore } from '../lib/match';
@@ -106,6 +107,12 @@ export default function RacketDetailPage() {
       <div>
         <Link to="/" className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">← ダッシュボードへ</Link>
         <h2 className="mt-1 text-xl font-bold">{racket.name}</h2>
+        {racket.purchaseDate && (
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+            購入日 {racket.purchaseDate}
+            {elapsedLabel(racket.purchaseDate) && <span className="ml-2">（購入から{elapsedLabel(racket.purchaseDate)}）</span>}
+          </p>
+        )}
       </div>
 
       {restringInfo.latestStringing && (

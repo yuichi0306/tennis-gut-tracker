@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { resolveSettings } from './settings';
+import { normalizeRacket } from './racket';
 import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
@@ -26,7 +27,7 @@ function userDoc(uid: string) {
 function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'updatedAt'> {
   const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   return {
-    rackets: arr<Racket>(raw?.rackets),
+    rackets: arr<Racket>(raw?.rackets).map(normalizeRacket),
     shoes: arr<Shoe>(raw?.shoes),
     stringingRecords: arr<StringingRecord>(raw?.stringingRecords),
     practiceSessions: arr<PracticeSession>(raw?.practiceSessions),

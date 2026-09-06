@@ -2,7 +2,8 @@
 export interface Racket {
   id: string;
   name: string; // 例: Wilson Blade 98 v8
-  createdAt: string; // ISO date
+  purchaseDate: string; // 購入日（ISO date。未入力は ''。購入日対応より前のデータは読み込み時に '' で補完）
+  createdAt: string; // ISO date（アプリに登録した日時。購入日とは別）
 }
 
 // ガットの種類
