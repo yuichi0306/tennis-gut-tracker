@@ -106,7 +106,14 @@ export default function RacketDetailPage() {
     <div className="space-y-6">
       <div>
         <Link to="/" className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">← ダッシュボードへ</Link>
-        <h2 className="mt-1 text-xl font-bold">{racket.name}</h2>
+        <h2 className="mt-1 flex flex-wrap items-center gap-2 text-xl font-bold">
+          {racket.name}
+          {racket.archived && (
+            <span className="rounded-full border border-gray-300 px-2 py-0.5 text-xs font-normal text-gray-500 dark:border-slate-600 dark:text-slate-400">
+              アーカイブ済み
+            </span>
+          )}
+        </h2>
         {racket.purchaseDate && (
           <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
             購入日 {racket.purchaseDate}

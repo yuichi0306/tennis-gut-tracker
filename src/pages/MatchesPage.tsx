@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRackets } from '../hooks/useRackets';
+import { activeRackets, pastRacketLabel } from '../lib/racket';
 import { useShoes } from '../hooks/useShoes';
 import { useMatches } from '../hooks/useMatches';
 import type { MatchRecord, MatchFormat, MatchSet } from '../types';
@@ -20,6 +21,8 @@ const resultStyle: Record<MatchResult, string> = {
 
 export default function MatchesPage() {
   const { rackets } = useRackets();
+  // 記録の入力欄にはアーカイブしていないラケットだけを出す
+  const racketOptions = activeRackets(rackets);
   const { shoes } = useShoes();
   const { matches, addMatch, updateMatch, deleteMatch } = useMatches();
 
@@ -149,8 +152,8 @@ export default function MatchesPage() {
     <div className="space-y-6">
       <section>
         <h2 className="mb-2 text-xl font-bold">{editingId ? '試合を編集' : '試合を記録'}</h2>
-        {rackets.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">先に「ラケット」タブでラケットを登録してください。</p>
+        {racketOptions.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-slate-400">先に「ラケット」タブでラケットを登録してください（アーカイブ済みのみの場合は使用中に戻してください）。</p>
         ) : (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1 text-sm sm:col-span-2">
@@ -215,9 +218,13 @@ export default function MatchesPage() {
               ラケット
               <select value={racketId} onChange={(e) => setRacketId(e.target.value)} className={inputClass} required>
                 <option value="">選択してください</option>
-                {rackets.map((r) => (
+                {racketOptions.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
+                {/* アーカイブ済み・削除済みのラケットを選んでいた記録を編集しても、選択が消えないようにする */}
+                {racketId && !racketOptions.some((r) => r.id === racketId) && (
+                  <option value={racketId}>{pastRacketLabel(rackets, racketId)}</option>
+                )}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">

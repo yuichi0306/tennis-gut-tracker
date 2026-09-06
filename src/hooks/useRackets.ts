@@ -16,6 +16,7 @@ export function useRackets() {
       id: uuidv4(),
       name: input.name,
       purchaseDate: input.purchaseDate,
+      archived: false,
       createdAt: new Date().toISOString(),
     };
     setRackets((prev) => [...prev, racket]);
@@ -26,9 +27,14 @@ export function useRackets() {
     setRackets((prev) => prev.map((r) => (r.id === id ? { ...r, ...input } : r)));
   }
 
+  // アーカイブ／使用中に戻す。記録は消さず、入力欄やダッシュボードから外れるだけ。
+  function setRacketArchived(id: string, archived: boolean) {
+    setRackets((prev) => prev.map((r) => (r.id === id ? { ...r, archived } : r)));
+  }
+
   function deleteRacket(id: string) {
     setRackets((prev) => prev.filter((r) => r.id !== id));
   }
 
-  return { rackets, addRacket, updateRacket, deleteRacket };
+  return { rackets, addRacket, updateRacket, setRacketArchived, deleteRacket };
 }

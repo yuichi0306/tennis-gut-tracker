@@ -3,6 +3,7 @@ export interface Racket {
   id: string;
   name: string; // 例: Wilson Blade 98 v8
   purchaseDate: string; // 購入日（ISO date。未入力は ''。購入日対応より前のデータは読み込み時に '' で補完）
+  archived: boolean; // アーカイブ（もう使わないラケット。記録は残したまま入力欄・ダッシュボードから外す）
   createdAt: string; // ISO date（アプリに登録した日時。購入日とは別）
 }
 
