@@ -4,10 +4,11 @@ import { activeRackets, pastRacketLabel } from '../lib/racket';
 import { activeShoes, pastShoeLabel } from '../lib/shoe';
 import { useShoes } from '../hooks/useShoes';
 import { usePracticeSessions } from '../hooks/usePracticeSessions';
-import type { PracticeSession, TensionFeel } from '../types';
+import type { CourtSurface, PracticeSession, TensionFeel } from '../types';
 import { todayISO } from '../lib/date';
 import HistoryFilter from '../components/HistoryFilter';
 import { TENSION_FEELS, tensionFeelLabel, tensionFeelClass } from '../lib/tensionFeel';
+import { COURT_SURFACES } from '../lib/surface';
 
 export default function PracticePage() {
   const { rackets } = useRackets();
@@ -24,6 +25,8 @@ export default function PracticePage() {
   const [shoeId, setShoeId] = useState('');
   const [date, setDate] = useState(todayISO());
   const [durationMinutes, setDurationMinutes] = useState('60');
+  const [courtName, setCourtName] = useState('');
+  const [surface, setSurface] = useState<CourtSurface | ''>('');
   const [tensionFeel, setTensionFeel] = useState<TensionFeel | ''>('');
   const [notes, setNotes] = useState('');
 
@@ -33,12 +36,24 @@ export default function PracticePage() {
     return shoes.find((s) => s.id === id)?.name ?? '(削除済みシューズ)';
   };
 
+  // 過去の記録からコート名の入力候補を作る（使用回数の多い順）
+  const courtSuggestions = (() => {
+    const counts = new Map<string, number>();
+    for (const s of sessions) {
+      const value = (s.courtName ?? '').trim();
+      if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([value]) => value);
+  })();
+
   function resetForm() {
     setEditingId(null);
     setRacketId('');
     setShoeId('');
     setDate(todayISO());
     setDurationMinutes('60');
+    setCourtName('');
+    setSurface('');
     setTensionFeel('');
     setNotes('');
   }
@@ -49,6 +64,8 @@ export default function PracticePage() {
     setShoeId(s.shoeId ?? '');
     setDate(s.date);
     setDurationMinutes(String(s.durationMinutes));
+    setCourtName(s.courtName ?? '');
+    setSurface(s.surface ?? '');
     setTensionFeel(s.tensionFeel ?? '');
     setNotes(s.notes);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -62,6 +79,8 @@ export default function PracticePage() {
       shoeId,
       date,
       durationMinutes: Number(durationMinutes),
+      courtName: courtName.trim(),
+      surface,
       tensionFeel,
       notes: notes.trim(),
     };
@@ -94,7 +113,7 @@ export default function PracticePage() {
     if (fFrom && s.date < fFrom) return false;
     if (fTo && s.date > fTo) return false;
     if (kw) {
-      const haystack = `${s.notes} ${racketName(s.racketId)} ${shoeName(s.shoeId) ?? ''}`.toLowerCase();
+      const haystack = `${s.notes} ${racketName(s.racketId)} ${shoeName(s.shoeId) ?? ''} ${s.courtName ?? ''} ${s.surface ?? ''}`.toLowerCase();
       if (!haystack.includes(kw)) return false;
     }
     return true;
@@ -143,6 +162,31 @@ export default function PracticePage() {
               <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} min="1" className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5" required />
             </label>
             <label className="flex flex-col gap-1 text-sm">
+              コート名（任意）
+              <input
+                type="text"
+                value={courtName}
+                onChange={(e) => setCourtName(e.target.value)}
+                list="practice-courts"
+                placeholder="例: 市営 中央公園コート"
+                className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5"
+              />
+              <datalist id="practice-courts">
+                {courtSuggestions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              サーフェス（任意）
+              <select value={surface} onChange={(e) => setSurface(e.target.value as CourtSurface | '')} className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5">
+                <option value="">未選択</option>
+                {COURT_SURFACES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
               テンション体感（任意）
               <select value={tensionFeel} onChange={(e) => setTensionFeel(e.target.value as TensionFeel | '')} className="rounded border border-gray-300 dark:border-slate-600 px-2 py-1.5">
                 <option value="">未選択</option>
@@ -185,7 +229,7 @@ export default function PracticePage() {
               onTo={setFTo}
               keyword={fKeyword}
               onKeyword={setFKeyword}
-              keywordPlaceholder="メモ・ラケット名・シューズ名で検索"
+              keywordPlaceholder="メモ・ラケット名・シューズ名・コート名で検索"
               active={filterActive}
               onClear={clearFilters}
               resultCount={filteredSessions.length}
@@ -209,6 +253,14 @@ export default function PracticePage() {
                       )}
                       {shoeName(s.shoeId) && (
                         <span className="text-xs text-gray-500 dark:text-slate-400">👟 {shoeName(s.shoeId)}</span>
+                      )}
+                      {s.courtName && (
+                        <span className="text-xs text-gray-500 dark:text-slate-400">📍 {s.courtName}</span>
+                      )}
+                      {s.surface && (
+                        <span className="rounded border border-gray-300 px-1.5 py-0.5 text-xs text-gray-600 dark:border-slate-600 dark:text-slate-300">
+                          {s.surface}
+                        </span>
                       )}
                     </p>
                     {s.notes && <p className="text-gray-500 dark:text-slate-400">メモ: {s.notes}</p>}

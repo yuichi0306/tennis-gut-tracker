@@ -4,11 +4,12 @@ import { activeRackets, pastRacketLabel } from '../lib/racket';
 import { activeShoes, pastShoeLabel } from '../lib/shoe';
 import { useShoes } from '../hooks/useShoes';
 import { useMatches } from '../hooks/useMatches';
-import type { MatchRecord, MatchFormat, MatchSet } from '../types';
+import type { CourtSurface, MatchRecord, MatchFormat, MatchSet } from '../types';
 import { todayISO } from '../lib/date';
 import { matchResult, resultLabel, formatLabel, formatScore, summarize, isPlayedSet, type MatchResult } from '../lib/match';
 import { formatMinutes } from '../lib/stats';
 import HistoryFilter from '../components/HistoryFilter';
+import { COURT_SURFACES } from '../lib/surface';
 
 const MAX_SETS = 5;
 const blankRow = () => ({ my: '', opp: '' });
@@ -39,6 +40,8 @@ export default function MatchesPage() {
   const [partner, setPartner] = useState('');
   const [rows, setRows] = useState<{ my: string; opp: string }[]>(initialRows());
   const [durationMinutes, setDurationMinutes] = useState('90');
+  const [courtName, setCourtName] = useState('');
+  const [surface, setSurface] = useState<CourtSurface | ''>('');
   const [notes, setNotes] = useState('');
 
   const racketName = (id: string) => rackets.find((r) => r.id === id)?.name ?? '(削除済みラケット)';
@@ -58,6 +61,7 @@ export default function MatchesPage() {
   }
   const opponentSuggestions = suggestionsFrom((m) => m.opponent);
   const partnerSuggestions = suggestionsFrom((m) => m.partner);
+  const courtSuggestions = suggestionsFrom((m) => m.courtName);
 
   // 入力中の行から MatchSet[] を作る（0-0 の空行は除く）
   function buildSets(): MatchSet[] {
@@ -78,6 +82,8 @@ export default function MatchesPage() {
     setPartner('');
     setRows(initialRows());
     setDurationMinutes('90');
+    setCourtName('');
+    setSurface('');
     setNotes('');
   }
 
@@ -91,6 +97,8 @@ export default function MatchesPage() {
     setPartner(m.partner ?? '');
     setRows(m.sets.length ? m.sets.map((s) => ({ my: String(s.myGames), opp: String(s.opponentGames) })) : initialRows());
     setDurationMinutes(String(m.durationMinutes));
+    setCourtName(m.courtName ?? '');
+    setSurface(m.surface ?? '');
     setNotes(m.notes);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -113,6 +121,8 @@ export default function MatchesPage() {
       partner: format === 'doubles' ? partner.trim() : '',
       sets,
       durationMinutes: Number(durationMinutes) || 0,
+      courtName: courtName.trim(),
+      surface,
       notes: notes.trim(),
     };
     if (editingId) {
@@ -143,7 +153,7 @@ export default function MatchesPage() {
     if (fFrom && m.date < fFrom) return false;
     if (fTo && m.date > fTo) return false;
     if (kw) {
-      const haystack = `${m.opponent} ${m.partner ?? ''} ${m.notes} ${racketName(m.racketId)}`.toLowerCase();
+      const haystack = `${m.opponent} ${m.partner ?? ''} ${m.notes} ${racketName(m.racketId)} ${m.courtName ?? ''} ${m.surface ?? ''}`.toLowerCase();
       if (!haystack.includes(kw)) return false;
     }
     return true;
@@ -218,6 +228,31 @@ export default function MatchesPage() {
               </label>
             )}
 
+            <label className="flex flex-col gap-1 text-sm">
+              コート名（任意）
+              <input
+                type="text"
+                value={courtName}
+                onChange={(e) => setCourtName(e.target.value)}
+                list="match-courts"
+                placeholder="例: 市営 中央公園コート"
+                className={inputClass}
+              />
+              <datalist id="match-courts">
+                {courtSuggestions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              サーフェス（任意）
+              <select value={surface} onChange={(e) => setSurface(e.target.value as CourtSurface | '')} className={inputClass}>
+                <option value="">未選択</option>
+                {COURT_SURFACES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </label>
             <label className="flex flex-col gap-1 text-sm">
               ラケット
               <select value={racketId} onChange={(e) => setRacketId(e.target.value)} className={inputClass} required>
@@ -311,7 +346,7 @@ export default function MatchesPage() {
               onTo={setFTo}
               keyword={fKeyword}
               onKeyword={setFKeyword}
-              keywordPlaceholder="相手・味方・メモで検索"
+              keywordPlaceholder="相手・味方・メモ・コート名で検索"
               active={filterActive}
               onClear={clearFilters}
               resultCount={filtered.length}
@@ -347,6 +382,10 @@ export default function MatchesPage() {
                               {m.format === 'doubles' && m.partner && <span>味方: {m.partner}</span>}
                               <span>{racketName(m.racketId)}</span>
                               {shoeName(m.shoeId) && <span>👟 {shoeName(m.shoeId)}</span>}
+                              {m.courtName && <span>📍 {m.courtName}</span>}
+                              {m.surface && (
+                                <span className="rounded border border-gray-300 px-1.5 py-0.5 dark:border-slate-600">{m.surface}</span>
+                              )}
                               <span>{formatMinutes(m.durationMinutes)}</span>
                             </p>
                             {m.notes && <p className="mt-0.5 text-gray-500 dark:text-slate-400">メモ: {m.notes}</p>}

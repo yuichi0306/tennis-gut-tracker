@@ -111,9 +111,10 @@ export function downloadPracticeCsv() {
   const nameOf = racketNamer();
   const shoeNameOf = shoeNamer();
   const sessions = [...practiceStorage.getAll()].sort((a, b) => a.date.localeCompare(b.date));
-  const headers = ['日付', 'ラケット', 'シューズ', '練習時間(分)', 'テンション体感', 'メモ'];
+  const headers = ['日付', 'ラケット', 'シューズ', 'コート名', 'サーフェス', '練習時間(分)', 'テンション体感', 'メモ'];
   const rows = sessions.map((s) => [
-    s.date, nameOf(s.racketId), shoeNameOf(s.shoeId), s.durationMinutes, tensionFeelLabel(s.tensionFeel) ?? '', s.notes,
+    s.date, nameOf(s.racketId), shoeNameOf(s.shoeId), s.courtName ?? '', s.surface ?? '',
+    s.durationMinutes, tensionFeelLabel(s.tensionFeel) ?? '', s.notes,
   ]);
   const date = new Date().toISOString().slice(0, 10);
   downloadText(`tennis-gut-tracker-practice-${date}.csv`, toCsv(headers, rows), 'text/csv;charset=utf-8');
@@ -124,10 +125,11 @@ export function downloadMatchCsv() {
   const nameOf = racketNamer();
   const shoeNameOf = shoeNamer();
   const matches = [...matchStorage.getAll()].sort((a, b) => a.date.localeCompare(b.date));
-  const headers = ['日付', '形式', '結果', 'スコア', '対戦相手', '味方', 'ラケット', 'シューズ', '試合時間(分)', 'メモ'];
+  const headers = ['日付', '形式', '結果', 'スコア', '対戦相手', '味方', 'ラケット', 'シューズ', 'コート名', 'サーフェス', '試合時間(分)', 'メモ'];
   const rows = matches.map((m) => [
     m.date, formatLabel(m.format), resultLabel(matchResult(m.sets)), formatScore(m.sets),
-    m.opponent, m.partner ?? '', nameOf(m.racketId), shoeNameOf(m.shoeId), m.durationMinutes, m.notes,
+    m.opponent, m.partner ?? '', nameOf(m.racketId), shoeNameOf(m.shoeId),
+    m.courtName ?? '', m.surface ?? '', m.durationMinutes, m.notes,
   ]);
   const date = new Date().toISOString().slice(0, 10);
   downloadText(`tennis-gut-tracker-matches-${date}.csv`, toCsv(headers, rows), 'text/csv;charset=utf-8');
