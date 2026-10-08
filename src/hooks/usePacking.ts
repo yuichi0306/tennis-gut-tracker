@@ -57,12 +57,16 @@ export function usePacking() {
     return newItem;
   }
 
+  // 重複判定のキー。区切り文字を挟むだけだと「カテゴリA + 名前B C」と
+  // 「カテゴリA B + 名前C」が同じキーになってしまうので、JSON にして取り違えを防ぐ。
+  const dupKey = (category: string, name: string) => JSON.stringify([category, name]);
+
   // 複数まとめて追加（プリセットから）。そのリストに既にある同名（同カテゴリ）は追加しない。
   function addMany(listId: string, items: PresetItem[]) {
     setPacking((prev) => {
-      const exists = new Set(prev.filter((p) => p.listId === listId).map((p) => `${p.category} ${p.name}`));
+      const exists = new Set(prev.filter((p) => p.listId === listId).map((p) => dupKey(p.category, p.name)));
       const toAdd = items
-        .filter((it) => !exists.has(`${it.category} ${it.name}`))
+        .filter((it) => !exists.has(dupKey(it.category, it.name)))
         .map((it): PackingItem => ({ ...it, id: uuidv4(), listId, packed: false }));
       return [...prev, ...toAdd];
     });
