@@ -4,7 +4,8 @@ import { resolveSettings } from './settings';
 import { normalizeRacket } from './racket';
 import { normalizeShoe } from './shoe';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
+import { migratePacking } from './packing';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
 // users/{uid} の1ドキュメントに全データをまとめて保存する。
@@ -16,6 +17,7 @@ export interface CloudData {
   matches: MatchRecord[];
   wishlist: WishItem[];
   packing: PackingItem[];
+  packingLists: PackingList[];
   settings: RestringSettings;
   roster: RosterPlayer[];
   matchmaker: SavedSchedule | null; // 生成した対戦表（未作成・クリア後は null）
@@ -29,6 +31,8 @@ function userDoc(uid: string) {
 // 不正・欠損データが来ても落ちないよう、配列・設定を正規化する。
 function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'updatedAt'> {
   const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  // 複数リスト対応より前のクラウドデータも、ここで移行してから取り込む
+  const packing = migratePacking(arr<PackingList>(raw?.packingLists), arr<PackingItem>(raw?.packing));
   return {
     rackets: arr<Racket>(raw?.rackets).map(normalizeRacket),
     shoes: arr<Shoe>(raw?.shoes).map(normalizeShoe),
@@ -36,7 +40,8 @@ function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'update
     practiceSessions: arr<PracticeSession>(raw?.practiceSessions),
     matches: arr<MatchRecord>(raw?.matches),
     wishlist: arr<WishItem>(raw?.wishlist),
-    packing: arr<PackingItem>(raw?.packing),
+    packing: packing.items,
+    packingLists: packing.lists,
     settings: resolveSettings(raw?.settings),
     roster: arr<RosterPlayer>(raw?.roster),
     matchmaker: normalizeSavedSchedule(raw?.matchmaker),

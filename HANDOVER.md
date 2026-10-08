@@ -4,11 +4,12 @@
 
 - **公開URL**: https://yuichi0306.github.io/tennis-gut-tracker/
 - **リポジトリ**: https://github.com/yuichi0306/tennis-gut-tracker （パブリック）
-- **最終更新**: 2026-09-07
+- **最終更新**: 2026-10-08
 - **参考**: アプリ紹介用に「できることガイド（A4一枚・図解入り・印刷対応）」をClaude Artifactとして作成済み（既定は非公開。リポジトリ外の生成物）。
   URL: https://claude.ai/code/artifact/713f5abb-8c3b-40e5-a3fc-ceec2a1a1a99 （更新するときは、この**URLを `url` に渡して同じ場所を上書き**する。渡さないと別URLの新規ガイドができてしまう）
   **2026-09-07時点で全機能を反映済み**（ラケットの購入日・ラケット/シューズのアーカイブ・対戦表の保存・シューズのタイムライン・
   練習/試合のコート名とサーフェスを含む）。機能を足したらここも追記する。
+  ⚠️ **持ち物リストの複数化（合宿・試合・日帰り練習）はガイド未反映。** 次に更新するときに書き足す。
   A4一枚に収める前提なので、追記したら**用紙からあふれていないか確認する**（1ページ＝297mm。現状は下に約8mmの余白）。
   カードを増やすとあふれるので、**既存カードの本文とタグに書き足す**のが安全。確認は「ローカルの `public/` に一時コピー →
   `http://localhost:5173/<ファイル名>` で開いて `.sheet` の高さと `.foot` の下端を測る → 一時ファイルを消す」でできる。
@@ -22,7 +23,7 @@
 - **テニスシューズも登録**でき、練習・試合で選んだ分だけ使用時間が積み上がり「買い替え時期」を判定する。
 - ラケット・シューズは**アーカイブ**でき、記録を残したまま一覧や入力欄から外せる（削除ではない）。
 - **試合記録**（シングルス／ダブルス・ゲームスコア・勝敗自動判定）を残せる。試合時間はラケット・シューズの使用時間にも加算される。
-- **欲しいものリスト**（テニスグッズ）と**合宿の持ち物リスト**（定番プリセット・チェック式）も管理できる。
+- **欲しいものリスト**（テニスグッズ）と**持ち物リスト**（合宿・試合・日帰り練習など用途ごとに複数作れる・定番プリセット・チェック式）も管理できる。
 - データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
 - **Googleログインすると端末間でリアルタイム同期**（Firebase / Firestore）。スマホとPCで同じデータを見られる。
 - **PWA対応**。スマホの「ホーム画面に追加」でアプリのように起動でき、オフラインでも動く。
@@ -86,7 +87,7 @@ src/
     shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧（練習＋試合）・正規化/アーカイブ絞り込み
     match.ts               試合の勝敗判定・スコア整形・勝率集計
     wishlist.ts            欲しいものの優先度ラベル・並び替え
-    packing.ts             合宿持ち物のカテゴリ・定番プリセット
+    packing.ts             持ち物のカテゴリ・定番プリセット3種・旧データの移行（migratePacking）
     settings.ts            ガット種類別の基準／シューズ基準の既定値・正規化
     stats.ts               統計の集計（月別練習・ガット別使用傾向/平均★/コスト・costStats）
     backup.ts              エクスポート/インポート（バックアップ・復元）
@@ -104,7 +105,7 @@ src/
     useShoes.ts            シューズのCRUD
     useMatches.ts          試合記録のCRUD
     useWishlist.ts         欲しいものリストのCRUD
-    usePacking.ts          持ち物リストのCRUD（一括追加・チェック一括リセット含む）
+    usePacking.ts          持ち物リストのCRUD（リストの作成/複製/改名/削除・一括追加・チェック一括リセット）
     useStringingRecords.ts 張り替え記録のCRUD
     usePracticeSessions.ts 練習記録のCRUD
     useSettings.ts         張り替え基準の設定の読み書き
@@ -123,7 +124,7 @@ src/
     ShoeDetailPage.tsx     シューズ詳細（使用状況・タイムライン）。ルート /shoe/:id
     MatchesPage.tsx        試合記録（シングルス/ダブルス・ゲームスコア・勝敗自動・勝率）。ルート /matches
     WishlistPage.tsx       欲しいものリスト（優先度・価格・購入チェック）。ルート /wishlist
-    PackingPage.tsx        合宿持ち物リスト（定番プリセット・カテゴリ・チェック一括リセット）。ルート /packing
+    PackingPage.tsx        持ち物リスト（用途ごとに複数・定番プリセット・複製・チェック一括リセット）。ルート /packing
     StringingPage.tsx      ガット張り替え記録（追加・編集・削除・絞り込み・ガット名/張り場所のサジェスト）
     PracticePage.tsx       練習記録（追加・編集・削除・体感・絞り込み）
     StatsPage.tsx          統計（今月サマリー・月別棒グラフ・コスト・ガット別・ガット比較）
@@ -156,7 +157,8 @@ ShoeSurface      'オールコート' | 'オムニ・クレー' | 'ハード' | 
 MatchFormat      'singles' | 'doubles'
 WishItem         { id, name, price, priority, bought, notes, createdAt }  // priority='high'|'mid'|'low'、price未入力は 0
 WishPriority     'high'（高） | 'mid'（中） | 'low'（低）
-PackingItem      { id, name, category, quantity, packed }  // category未設定は ''、quantityは1以上
+PackingList      { id, name, createdAt }  // 持ち物リストそのもの（合宿・試合…）
+PackingItem      { id, listId, name, category, quantity, packed }  // listId=どのリストの持ち物か、category未設定は ''、quantityは1以上
 RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。names=生成時点の名前の控え。無いときは null（lib/matchmaker.ts）
 ```
@@ -168,12 +170,14 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 - `tennis-tracker:stringing-records`
 - `tennis-tracker:practice-sessions`
 - `tennis-tracker:wishlist`（欲しいものリスト）
-- `tennis-tracker:packing`（合宿持ち物リスト）
+- `tennis-tracker:packing`（持ち物の品物。どのリストかは `listId` で持つ）
+- `tennis-tracker:packing-lists`（持ち物リストそのもの）
 - `tennis-tracker:settings`
 - `tennis-tracker:owner`（ローカルデータの持ち主uid：同期用）
 - `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
 - `tennis-tracker:theme`（表示テーマ `light`/`dark`。未設定ならOS設定に追従）
 - `tennis-tracker:nav-order`（タブの並び順。パスの配列。未設定なら既定順）
+- `tennis-tracker:packing-selected`（最後に開いていた持ち物リスト。この端末だけ・同期対象外）
 - `tennis-tracker:restring-banner-dismissed`（要張り替えサマリーバナーを閉じた時の状況署名）
 - `tennis-tracker:roster`（対戦表の参加者名簿。他データと同じく端末間同期・バックアップ対象）
 - `tennis-tracker:matchmaker`（生成した対戦表。クリアするまで残る。端末間同期・バックアップ対象）
@@ -339,9 +343,17 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 
 ## 6.14 欲しいものリスト・合宿持ち物リスト
 
-- ガット・練習の記録とは独立した2つのチェックリスト機能。どちらも端末間同期・バックアップ対象（`CloudData` / `BackupData` の `wishlist` / `packing`）。対応前のバックアップ（項目なし）も復元可。
+- ガット・練習の記録とは独立した2つのチェックリスト機能。どちらも端末間同期・バックアップ対象（`CloudData` / `BackupData` の `wishlist` / `packing` / `packingLists`）。対応前のバックアップ（項目なし）も復元可。
+- **複数リスト対応より前のデータの移行**：`listId` を持たない持ち物は、読み込み時に `migratePacking()` が**固定ID `legacy-camp` の「合宿」リスト**へまとめて入れる。
+  IDを固定しているのは、端末ごとに別IDの「合宿」ができて同期で二重になるのを防ぐため。移行は localStorage（`loadPacking`）・クラウド（`cloud.ts` の `normalize`）・復元（`backup.ts`）の3か所すべてを通す。
 - **欲しいもの**（`/wishlist`）：`src/pages/WishlistPage.tsx` / `src/hooks/useWishlist.ts` / `src/lib/wishlist.ts`。品名（必須）・価格の目安・優先度（高/中/低）・メモ。優先度順に並び、目安合計を表示。購入チェックで「購入済み」セクションへ分離（合計からも除外）。
-- **持ち物**（`/packing`）：`src/pages/PackingPage.tsx` / `src/hooks/usePacking.ts` / `src/lib/packing.ts`。定番プリセット（`PACKING_PRESET`）から一括追加でき、`addMany` は「カテゴリ+名前」が既存のものは追加しない（重複防止）。カテゴリごとに表示、個数あり、チェックで準備管理。**「チェックを一括リセット」（`resetChecks`）で次の合宿に使い回し**、「すべて削除」（`clearAll`）も可。
+- **持ち物**（`/packing`）：`src/pages/PackingPage.tsx` / `src/hooks/usePacking.ts` / `src/lib/packing.ts`。
+  **用途ごとにリストを複数持てる**（`PackingList`）。持ち物（`PackingItem`）は `listId` でどのリストのものかを持つ。
+  - 定番プリセットは3種類（`PACKING_PRESETS` = 合宿25項目 / 試合26項目 / 日帰り練習14項目）。「リストを作る」から選ぶと、そのリストが中身ごと作られる。同名のリストがあると「試合2」のように連番を付ける。
+  - **リストの複製**（`duplicateList`）：中身をコピーし、チェックは外した状態で入る。合宿用から削って試合用を作る、といった使い方向け。
+  - 改名（`renameList`）・削除（`deleteList`＝中の持ち物も消える）・中身を空にする（`clearItems`＝リストの枠は残す）。
+  - **チェックの一括リセット（`resetChecks`）・定番の追加（`addMany`）は、選んでいるリストだけが対象**。`addMany` は同じリスト内で「カテゴリ+名前」が既存のものは追加しない（重複防止）。
+  - 最後に開いていたリストは `tennis-tracker:packing-selected` に保存（**この端末だけ**。同期・バックアップ対象外）。選んでいたリストが消えたら先頭のリストに寄せる。
 - チェックリストなのでCSVは無し（バックアップJSONには含まれる）。
 
 ---
@@ -436,4 +448,4 @@ git push origin main          # → 自動でビルド・デプロイ
 - 試合の勝率・傾向を統計ページに統合（相手別・サーフェス別・月別勝率など。現状は「試合」タブ内の集計のみ）
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え / ラケットの購入日 / ラケット・シューズのアーカイブ / 対戦表の保存 / シューズのタイムライン / コート名・サーフェス
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え / ラケットの購入日 / ラケット・シューズのアーカイブ / 対戦表の保存 / シューズのタイムライン / コート名・サーフェス / 持ち物リストの複数化

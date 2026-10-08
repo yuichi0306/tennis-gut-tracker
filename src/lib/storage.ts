@@ -1,8 +1,9 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
 import { resolveSettings } from './settings';
 import { normalizeRacket } from './racket';
 import { normalizeShoe } from './shoe';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
+import { migratePacking } from './packing';
 
 const KEYS = {
   rackets: 'tennis-tracker:rackets',
@@ -11,7 +12,8 @@ const KEYS = {
   practiceSessions: 'tennis-tracker:practice-sessions',
   matches: 'tennis-tracker:matches',
   wishlist: 'tennis-tracker:wishlist', // 欲しいものリスト
-  packing: 'tennis-tracker:packing', // 合宿持ち物リスト
+  packing: 'tennis-tracker:packing', // 持ち物（品物。どのリストのものかは listId で持つ）
+  packingLists: 'tennis-tracker:packing-lists', // 持ち物リスト（合宿・試合…）
   settings: 'tennis-tracker:settings',
   roster: 'tennis-tracker:roster', // 対戦表の参加者名簿
   matchmaker: 'tennis-tracker:matchmaker', // 生成した対戦表（クリアするまで残す）
@@ -67,6 +69,18 @@ export const packingStorage = {
   getAll: (): PackingItem[] => load<PackingItem>(KEYS.packing),
   save: (items: PackingItem[]) => save(KEYS.packing, items),
 };
+
+export const packingListStorage = {
+  getAll: (): PackingList[] =>
+    load<PackingList>(KEYS.packingLists).filter((l) => l && typeof l.id === 'string' && typeof l.name === 'string'),
+  save: (items: PackingList[]) => save(KEYS.packingLists, items),
+};
+
+// 読み込み時に、複数リスト対応より前のデータを移行してから返す。
+// 保存とは分けてあるので、移行結果は次の書き込みでそのまま保存される。
+export function loadPacking(): { lists: PackingList[]; items: PackingItem[] } {
+  return migratePacking(packingListStorage.getAll(), packingStorage.getAll());
+}
 
 export const rosterStorage = {
   getAll: (): RosterPlayer[] =>

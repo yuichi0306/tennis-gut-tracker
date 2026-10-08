@@ -1,10 +1,11 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from './storage';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
 import { recordCost } from './cost';
 import { tensionFeelLabel } from './tensionFeel';
 import { formatScore, formatLabel, resultLabel, matchResult } from './match';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
+import { migratePacking } from './packing';
 
 export interface BackupData {
   app: 'tennis-gut-tracker';
@@ -19,11 +20,13 @@ export interface BackupData {
   matches?: MatchRecord[]; // 試合対応より前のバックアップには含まれない
   wishlist?: WishItem[]; // 欲しいもの対応より前のバックアップには含まれない
   packing?: PackingItem[]; // 持ち物対応より前のバックアップには含まれない
+  packingLists?: PackingList[]; // 複数リスト対応より前のバックアップには含まれない（復元時に「合宿」へ移行）
   matchmaker?: SavedSchedule | null; // 生成した対戦表。対戦表の保存より前のバックアップには含まれない
 }
 
 // 現在の全データをバックアップ用オブジェクトにまとめる
 export function buildBackup(): BackupData {
+  const packing = loadPacking(); // リスト＋持ち物（古い形式はここで移行される）
   return {
     app: 'tennis-gut-tracker',
     version: 1,
@@ -36,7 +39,8 @@ export function buildBackup(): BackupData {
     shoes: shoeStorage.getAll(),
     matches: matchStorage.getAll(),
     wishlist: wishlistStorage.getAll(),
-    packing: packingStorage.getAll(),
+    packing: packing.items,
+    packingLists: packing.lists,
     matchmaker: matchmakerStorage.get(),
   };
 }
@@ -174,7 +178,11 @@ export function importBackup(jsonText: string): ImportResult {
   const shoes = asRecordArray<Shoe>(obj.shoes);
   const matches = asRecordArray<MatchRecord>(obj.matches);
   const wishlist = asRecordArray<WishItem>(obj.wishlist);
-  const packing = asRecordArray<PackingItem>(obj.packing);
+  // 複数リスト対応より前のバックアップは、ここで「合宿」リストへ移行する
+  const packing = migratePacking(
+    asRecordArray<PackingList>(obj.packingLists),
+    asRecordArray<PackingItem>(obj.packing),
+  );
   const matchmaker = normalizeSavedSchedule(obj.matchmaker);
 
   racketStorage.save(rackets);
@@ -184,7 +192,8 @@ export function importBackup(jsonText: string): ImportResult {
   shoeStorage.save(shoes);
   matchStorage.save(matches);
   wishlistStorage.save(wishlist);
-  packingStorage.save(packing);
+  packingStorage.save(packing.items);
+  packingListStorage.save(packing.lists);
   matchmakerStorage.save(matchmaker);
 
   // 設定は任意項目。含まれていれば正規化して取り込む（不正値は既定値で補完）
