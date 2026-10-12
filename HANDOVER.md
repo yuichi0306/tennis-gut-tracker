@@ -341,7 +341,7 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 
 - ガット・練習の記録とは独立した2つのチェックリスト機能。どちらも端末間同期・バックアップ対象（`CloudData` / `BackupData` の `wishlist` / `packing`）。対応前のバックアップ（項目なし）も復元可。
 - **欲しいもの**（`/wishlist`）：`src/pages/WishlistPage.tsx` / `src/hooks/useWishlist.ts` / `src/lib/wishlist.ts`。品名（必須）・価格の目安・優先度（高/中/低）・メモ。優先度順に並び、目安合計を表示。購入チェックで「購入済み」セクションへ分離（合計からも除外）。
-- **持ち物**（`/packing`）：`src/pages/PackingPage.tsx` / `src/hooks/usePacking.ts` / `src/lib/packing.ts`。定番プリセット（`PACKING_PRESET`）から一括追加でき、`addMany` は「カテゴリ+名前」が既存のものは追加しない（重複防止）。カテゴリごとに表示、個数あり、チェックで準備管理。**「チェックを一括リセット」（`resetChecks`）で次の合宿に使い回し**、「すべて削除」（`clearAll`）も可。
+- **持ち物**（`/packing`）：`src/pages/PackingPage.tsx` / `src/hooks/usePacking.ts` / `src/lib/packing.ts`。定番プリセット（`PACKING_PRESET`）から一括追加でき、`addMany` は「カテゴリ+名前」が既存のものは追加しない（重複防止）。カテゴリごとに表示、個数あり、チェックで準備管理。**「チェックを一括リセット」（`resetChecks`）で次の合宿に使い回し**、「すべて削除」（`clearAll`）も可。**行の左端の「⠿」をドラッグ（キーボードは ↑ ↓）でカテゴリ内を並び替え**できる（`reorderItems`。並び順は配列の順番として保存。ドラッグ中は画面内だけで並べ、指を離した時に1回だけ保存する）。**個数は各行の入力欄で後から編集**できる（フォーカスを外す／Enter で確定、1未満は1に丸める）。
 - チェックリストなのでCSVは無し（バックアップJSONには含まれる）。
 
 ---
