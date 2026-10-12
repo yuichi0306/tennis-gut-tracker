@@ -120,9 +120,17 @@ export interface WishItem {
   createdAt: string; // ISO datetime（並び順の安定用）
 }
 
-// 合宿持ち物リストの1品
+// 持ち物リストそのもの（合宿・試合・日帰り練習…と用途ごとに複数持てる）
+export interface PackingList {
+  id: string;
+  name: string; // 例: 合宿、試合
+  createdAt: string; // ISO datetime（並び順の基準）
+}
+
+// 持ち物リストの1品
 export interface PackingItem {
   id: string;
+  listId: string; // どのリストの持ち物か（PackingList.id）
   name: string;
   category: string; // カテゴリ（未設定は ''）
   quantity: number; // 個数（1以上）

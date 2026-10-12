@@ -9,10 +9,10 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { readCloud, writeCloud, subscribeCloud, type CloudData } from '../lib/cloud';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from '../lib/storage';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from '../lib/storage';
 import type { SavedSchedule } from '../lib/matchmaker';
 import { DEFAULT_SETTINGS } from '../lib/settings';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
 
 type LocalData = Omit<CloudData, 'updatedAt'>;
 type Updater<T> = (prev: T) => T;
@@ -26,6 +26,7 @@ interface DataContextValue {
   matches: MatchRecord[];
   wishlist: WishItem[];
   packing: PackingItem[];
+  packingLists: PackingList[];
   settings: RestringSettings;
   roster: RosterPlayer[];
   matchmaker: SavedSchedule | null; // 生成した対戦表（クリアするまで残る）
@@ -36,6 +37,7 @@ interface DataContextValue {
   setMatches: (updater: Updater<MatchRecord[]>) => void;
   setWishlist: (updater: Updater<WishItem[]>) => void;
   setPacking: (updater: Updater<PackingItem[]>) => void;
+  setPackingLists: (updater: Updater<PackingList[]>) => void;
   setSettings: (updater: Updater<RestringSettings>) => void;
   setRoster: (updater: Updater<RosterPlayer[]>) => void;
   setMatchmaker: (updater: Updater<SavedSchedule | null>) => void;
@@ -67,6 +69,7 @@ function mergeLocalAndCloud(local: LocalData, cloud: LocalData): LocalData {
     matches: mergeById(local.matches, cloud.matches),
     wishlist: mergeById(local.wishlist, cloud.wishlist),
     packing: mergeById(local.packing, cloud.packing),
+    packingLists: mergeById(local.packingLists, cloud.packingLists),
     roster: mergeById(local.roster, cloud.roster),
     // 設定はクラウド側を優先（無ければローカル）
     settings: cloud.settings ?? local.settings,
@@ -83,6 +86,7 @@ const EMPTY_DATA: LocalData = {
   matches: [],
   wishlist: [],
   packing: [],
+  packingLists: [],
   settings: DEFAULT_SETTINGS,
   roster: [],
   matchmaker: null,
@@ -107,6 +111,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [matches, setMatchesState] = useState<MatchRecord[]>([]);
   const [wishlist, setWishlistState] = useState<WishItem[]>([]);
   const [packing, setPackingState] = useState<PackingItem[]>([]);
+  const [packingLists, setPackingListsState] = useState<PackingList[]>([]);
   const [stringingRecords, setStringingState] = useState<StringingRecord[]>([]);
   const [practiceSessions, setPracticeState] = useState<PracticeSession[]>([]);
   const [settings, setSettingsState] = useState<RestringSettings>(DEFAULT_SETTINGS);
@@ -126,6 +131,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     matches: [],
     wishlist: [],
     packing: [],
+    packingLists: [],
     settings: DEFAULT_SETTINGS,
     roster: [],
     matchmaker: null,
@@ -133,6 +139,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // 起動時にローカルから読み込む（未ログイン・オフラインでもそのまま動く）
   useEffect(() => {
+    // 持ち物は、複数リスト対応より前のデータを移行してから読み込む
+    const localPacking = loadPacking();
     const local: LocalData = {
       rackets: racketStorage.getAll(),
       shoes: shoeStorage.getAll(),
@@ -140,7 +148,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       practiceSessions: practiceStorage.getAll(),
       matches: matchStorage.getAll(),
       wishlist: wishlistStorage.getAll(),
-      packing: packingStorage.getAll(),
+      packing: localPacking.items,
+      packingLists: localPacking.lists,
       settings: settingsStorage.get(),
       roster: rosterStorage.getAll(),
       matchmaker: matchmakerStorage.get(),
@@ -153,6 +162,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setMatchesState(local.matches);
     setWishlistState(local.wishlist);
     setPackingState(local.packing);
+    setPackingListsState(local.packingLists);
     setSettingsState(local.settings);
     setRosterState(local.roster);
     setMatchmakerState(local.matchmaker);
@@ -168,6 +178,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setMatchesState(d.matches);
     setWishlistState(d.wishlist);
     setPackingState(d.packing);
+    setPackingListsState(d.packingLists);
     setSettingsState(d.settings);
     setRosterState(d.roster);
     setMatchmakerState(d.matchmaker);
@@ -178,6 +189,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     matchStorage.save(d.matches);
     wishlistStorage.save(d.wishlist);
     packingStorage.save(d.packing);
+    packingListStorage.save(d.packingLists);
     settingsStorage.save(d.settings);
     rosterStorage.save(d.roster);
     matchmakerStorage.save(d.matchmaker);
@@ -278,6 +290,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     packingStorage.save(next);
     pushCloud();
   };
+  const setPackingLists = (updater: Updater<PackingList[]>) => {
+    const next = updater(dataRef.current.packingLists);
+    dataRef.current = { ...dataRef.current, packingLists: next };
+    setPackingListsState(next);
+    packingListStorage.save(next);
+    pushCloud();
+  };
   const setStringingRecords = (updater: Updater<StringingRecord[]>) => {
     const next = updater(dataRef.current.stringingRecords);
     dataRef.current = { ...dataRef.current, stringingRecords: next };
@@ -342,6 +361,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         matches,
         wishlist,
         packing,
+        packingLists,
         settings,
         roster,
         matchmaker,
@@ -350,6 +370,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setMatches,
         setWishlist,
         setPacking,
+        setPackingLists,
         setStringingRecords,
         setPracticeSessions,
         setSettings,
