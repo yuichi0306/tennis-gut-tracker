@@ -186,6 +186,8 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 - `tennis-tracker:settings`
 - `tennis-tracker:owner`（ローカルデータの持ち主uid：同期用）
 - `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
+- `tennis-tracker:deletions`（削除済みの記録：同期用）
+- `tennis-tracker:restored-at`（最後にバックアップで置き換えた時刻：同期用）
 - `tennis-tracker:theme`（表示テーマ `light`/`dark`。未設定ならOS設定に追従）
 - `tennis-tracker:nav-order`（タブの並び順。パスの配列。未設定なら既定順）
 - `tennis-tracker:packing-selected`（最後に開いていた持ち物リスト。この端末だけ・同期対象外）
@@ -222,10 +224,12 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 
 - 未ログイン時は従来通り localStorage のみで動作。**Googleログインすると `users/{uid}` の1ドキュメントに全データを保存**し、リアルタイム同期する。
 - 実装: `src/lib/firebase.ts`（初期化・設定）、`src/lib/cloud.ts`（Firestore入出力）、`src/context/DataContext.tsx`（認証＋同期の中枢。各hookはここを参照するだけ）、`src/components/AuthBar.tsx`（ヘッダーのログインUI）。
-- 同期方式は**whole-document（後勝ち）**。初回ログイン時のみローカルとクラウドをid結合して取りこぼしを防ぐ。1人が複数端末で使う用途を想定。
+- 同期方式は**whole-document（後勝ち）**。起動時（とオフライン復帰時）にローカルとクラウドをid結合して取りこぼしを防ぐ。1人が複数端末で使う用途を想定。
+- **削除済みの記録**：`CloudData.deletions`（`tennis-tracker:deletions`、`{ kind, id, at }` の配列）。setter が消えた id を記録し、結合時に取り除くので、古いデータを持つ端末から復活しない。記録は端末間で合わせる。バックアップJSONには含めない。実装は `src/lib/deletions.ts`。
+- **統合完了までクラウドへ書かない**：`pushCloud` は `mergedUidRef` が今のアカウントと一致するまで何もしない。統合前の入力は `unmergedEditsRef` に控えて結合時にクラウドより優先し、統合後に書き込む。オフライン中も同じ扱いで、`online` で統合し直す（失敗時は30秒後に再試行）。
 - ログイン統合ロジックは `resolveOnLogin`（DataContext）で分岐：
   - **持ち主(uid)を `tennis-tracker:owner` に記録**。別アカウントでログインしたら、前アカウントのローカルデータは引き継がず（混ざらず）クラウド側を採用する。
-  - **復元時は `tennis-tracker:pending-replace` フラグ**を立て、ログイン中でも結合せずバックアップ内容でクラウドごと置き換える（データ復元＝置き換えを保証）。
+  - **復元時は `tennis-tracker:pending-replace` フラグ**を立て、ログイン中でも結合せずバックアップ内容でクラウドごと置き換える（データ復元＝置き換えを保証）。クラウドにあってバックアップに無い項目は削除済みにし、`restoredAt` より前の端末側の削除記録は無視する。
 - `firebaseConfig` の apiKey は秘密情報ではなく公開されても問題ない。保護は **`firestore.rules`（本人のみ読み書き可）** で担保。
 - ログインは**ポップアップ方式**。モバイルPWA等でブロックされたら**リダイレクト方式に自動フォールバック**。
 

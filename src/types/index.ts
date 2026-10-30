@@ -173,3 +173,14 @@ export interface MonthlyReview {
   carryOver: string; // 次に持ち越すこと
   createdAt: string; // ISO datetime
 }
+
+// 同期で「削除済み」を記録する対象（matchmaker は createdAt を id として扱う）
+export type DeletionKind =
+  | 'rackets' | 'shoes' | 'stringingRecords' | 'practiceSessions' | 'matches' | 'wishlist'
+  | 'packing' | 'packingLists' | 'roster' | 'goalTasks' | 'monthlyReviews' | 'matchmaker';
+
+export interface Deletion {
+  kind: DeletionKind;
+  id: string;
+  at: number; // 削除した時刻(ms)
+}

@@ -6,7 +6,8 @@ import { normalizeShoe } from './shoe';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
 import { migratePacking } from './packing';
 import { resolveGoal } from './goal';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview } from '../types';
+import { normalizeDeletions } from './deletions';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview, Deletion } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
 // users/{uid} の1ドキュメントに全データをまとめて保存する。
@@ -25,6 +26,8 @@ export interface CloudData {
   settings: RestringSettings;
   roster: RosterPlayer[];
   matchmaker: SavedSchedule | null; // 生成した対戦表（未作成・クリア後は null）
+  deletions: Deletion[]; // 削除済みの記録（この項目が無い古いデータは空として扱う）
+  restoredAt: number; // 最後にバックアップで置き換えた時刻(ms)。未実施は 0
   updatedAt: number; // 最終更新時刻(ms)
 }
 
@@ -52,6 +55,8 @@ function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'update
     settings: resolveSettings(raw?.settings),
     roster: arr<RosterPlayer>(raw?.roster),
     matchmaker: normalizeSavedSchedule(raw?.matchmaker),
+    deletions: normalizeDeletions(raw?.deletions),
+    restoredAt: typeof raw?.restoredAt === 'number' ? raw.restoredAt : 0,
   };
 }
 

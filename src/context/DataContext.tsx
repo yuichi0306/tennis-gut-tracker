@@ -9,11 +9,12 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { readCloud, writeCloud, subscribeCloud, type CloudData } from '../lib/cloud';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, goalStorage, goalTaskStorage, monthlyReviewStorage, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from '../lib/storage';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, goalStorage, goalTaskStorage, monthlyReviewStorage, settingsStorage, rosterStorage, matchmakerStorage, deletionStorage, syncMeta } from '../lib/storage';
+import { deletionKey, mergeDeletions, noteDeletions } from '../lib/deletions';
 import type { SavedSchedule } from '../lib/matchmaker';
 import { DEFAULT_SETTINGS } from '../lib/settings';
 import { DEFAULT_GOAL } from '../lib/goal';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview, DeletionKind } from '../types';
 
 type LocalData = Omit<CloudData, 'updatedAt'>;
 type Updater<T> = (prev: T) => T;
@@ -58,6 +59,17 @@ interface DataContextValue {
 
 const DataContext = createContext<DataContextValue | null>(null);
 
+// 統合に失敗したとき、次に試すまでの待ち時間(ms)
+const SYNC_RETRY_MS = 30000;
+
+type ListKind = Exclude<DeletionKind, 'matchmaker'>;
+const LIST_KINDS: ListKind[] = ['rackets', 'shoes', 'stringingRecords', 'practiceSessions', 'matches', 'wishlist', 'packing', 'packingLists', 'roster', 'goalTasks', 'monthlyReviews'];
+
+// 対戦表は1件なので、作成日時を id の代わりにする
+function matchmakerIds(s: SavedSchedule | null): string[] {
+  return s ? [s.createdAt] : [];
+}
+
 // 2つの配列を id で結合する（重複 id は b を優先）。
 function mergeById<T extends { id: string }>(a: T[], b: T[]): T[] {
   const map = new Map<string, T>();
@@ -66,26 +78,51 @@ function mergeById<T extends { id: string }>(a: T[], b: T[]): T[] {
   return [...map.values()];
 }
 
-// 初回ログイン時：ローカルとクラウドを結合して取りこぼしを防ぐ（削除は結合では消えない）。
-function mergeLocalAndCloud(local: LocalData, cloud: LocalData): LocalData {
-  return {
-    rackets: mergeById(local.rackets, cloud.rackets),
-    shoes: mergeById(local.shoes, cloud.shoes),
-    stringingRecords: mergeById(local.stringingRecords, cloud.stringingRecords),
-    practiceSessions: mergeById(local.practiceSessions, cloud.practiceSessions),
-    matches: mergeById(local.matches, cloud.matches),
-    wishlist: mergeById(local.wishlist, cloud.wishlist),
-    packing: mergeById(local.packing, cloud.packing),
-    packingLists: mergeById(local.packingLists, cloud.packingLists),
-    roster: mergeById(local.roster, cloud.roster),
-    goalTasks: mergeById(local.goalTasks, cloud.goalTasks),
-    monthlyReviews: mergeById(local.monthlyReviews, cloud.monthlyReviews),
-    // 設定・目標は1件なので結合できない。クラウド側を優先（無ければローカル）
-    settings: cloud.settings ?? local.settings,
-    goal: cloud.goal ?? local.goal,
-    // 対戦表は1件だけなので結合できない。クラウド側を優先（無ければローカル）
-    matchmaker: cloud.matchmaker ?? local.matchmaker,
+// ローカルとクラウドを結合して取りこぼしを防ぐ。削除済みの記録にある項目は結合後に取り除く。
+// edits は統合が終わる前に画面で変更したもの。古いクラウドより、この入力を優先する。
+function mergeLocalAndCloud(local: LocalData, cloud: LocalData, edits: Set<string>): LocalData {
+  // バックアップで置き換えるより前の削除は、この端末に残っていても効かせない
+  const restoredAt = Math.max(local.restoredAt, cloud.restoredAt);
+  const deletions = mergeDeletions(local.deletions.filter((d) => d.at > restoredAt), cloud.deletions);
+  const deleted = new Set(deletions.map((d) => deletionKey(d.kind, d.id)));
+  const merge = <T extends { id: string }>(kind: ListKind, a: T[], b: T[]): T[] => {
+    const edited = a.filter((x) => edits.has(deletionKey(kind, x.id)));
+    return mergeById(mergeById(a, b), edited).filter((x) => !deleted.has(deletionKey(kind, x.id)));
   };
+  // 対戦表は1件だけなので結合できない。クラウド側を優先（無ければローカル）
+  const matchmaker = edits.has('matchmaker') ? local.matchmaker : (cloud.matchmaker ?? local.matchmaker);
+  return {
+    rackets: merge('rackets', local.rackets, cloud.rackets),
+    shoes: merge('shoes', local.shoes, cloud.shoes),
+    stringingRecords: merge('stringingRecords', local.stringingRecords, cloud.stringingRecords),
+    practiceSessions: merge('practiceSessions', local.practiceSessions, cloud.practiceSessions),
+    matches: merge('matches', local.matches, cloud.matches),
+    wishlist: merge('wishlist', local.wishlist, cloud.wishlist),
+    packing: merge('packing', local.packing, cloud.packing),
+    packingLists: merge('packingLists', local.packingLists, cloud.packingLists),
+    roster: merge('roster', local.roster, cloud.roster),
+    goalTasks: merge('goalTasks', local.goalTasks, cloud.goalTasks),
+    monthlyReviews: merge('monthlyReviews', local.monthlyReviews, cloud.monthlyReviews),
+    // 設定・目標は1件なので結合できない。クラウド側を優先（無ければローカル）
+    settings: edits.has('settings') ? local.settings : (cloud.settings ?? local.settings),
+    goal: edits.has('goal') ? local.goal : (cloud.goal ?? local.goal),
+    matchmaker: matchmaker && !deleted.has(deletionKey('matchmaker', matchmaker.createdAt)) ? matchmaker : null,
+    deletions,
+    restoredAt,
+  };
+}
+
+// バックアップで置き換える：クラウドにあってバックアップに無い項目は削除済みとして記録し、
+// 古いデータを持つ端末から戻らないようにする。バックアップにある項目の記録は外す。
+function replaceWithBackup(local: LocalData, cloud: LocalData | null): LocalData {
+  const now = Date.now();
+  let deletions = mergeDeletions(local.deletions, cloud?.deletions ?? []);
+  for (const kind of LIST_KINDS) {
+    const prevIds = (cloud?.[kind] ?? []).map((x) => x.id);
+    deletions = noteDeletions(deletions, kind, prevIds, local[kind].map((x) => x.id), now);
+  }
+  deletions = noteDeletions(deletions, 'matchmaker', matchmakerIds(cloud?.matchmaker ?? null), matchmakerIds(local.matchmaker), now);
+  return { ...local, deletions, restoredAt: now };
 }
 
 const EMPTY_DATA: LocalData = {
@@ -103,17 +140,19 @@ const EMPTY_DATA: LocalData = {
   settings: DEFAULT_SETTINGS,
   roster: [],
   matchmaker: null,
+  deletions: [],
+  restoredAt: 0,
 };
 
 // ログイン時にローカルとクラウドをどう統合するかを決める。
 // - 復元直後(pendingReplace)      : ローカル(=バックアップ)で完全に置き換える
 // - 持ち主が未設定/同一アカウント : 取りこぼし防止のため結合（＝ローカルをクラウドへ吸い上げ）
 // - 別アカウントのローカルデータ   : 引き継がず、クラウド側を採用する
-function resolveOnLogin(local: LocalData, cloud: LocalData | null, uid: string): LocalData {
-  if (syncMeta.isPendingReplace()) return local;
+function resolveOnLogin(local: LocalData, cloud: LocalData | null, uid: string, edits: Set<string>): LocalData {
+  if (syncMeta.isPendingReplace()) return replaceWithBackup(local, cloud);
   const owner = syncMeta.getOwner();
   if (owner === null || owner === uid) {
-    return cloud ? mergeLocalAndCloud(local, cloud) : local;
+    return cloud ? mergeLocalAndCloud(local, cloud, edits) : local;
   }
   return cloud ?? EMPTY_DATA;
 }
@@ -154,7 +193,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     settings: DEFAULT_SETTINGS,
     roster: [],
     matchmaker: null,
+    deletions: [],
+    restoredAt: 0,
   });
+  // 統合を終えてクラウドへ書いてよいアカウント。null の間は書き込まない。
+  const mergedUidRef = useRef<string | null>(null);
+  // 統合が終わる前に画面で変更した項目（統合時にクラウドより優先する）
+  const unmergedEditsRef = useRef(new Set<string>());
 
   // 起動時にローカルから読み込む（未ログイン・オフラインでもそのまま動く）
   useEffect(() => {
@@ -175,6 +220,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       settings: settingsStorage.get(),
       roster: rosterStorage.getAll(),
       matchmaker: matchmakerStorage.get(),
+      deletions: deletionStorage.getAll(),
+      restoredAt: syncMeta.getRestoredAt(),
     };
     dataRef.current = local;
     setRacketsState(local.rackets);
@@ -224,13 +271,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     settingsStorage.save(d.settings);
     rosterStorage.save(d.roster);
     matchmakerStorage.save(d.matchmaker);
+    deletionStorage.save(d.deletions);
+    syncMeta.setRestoredAt(d.restoredAt);
   }
 
-  // 現在の全データをクラウドへ反映する（ログイン中のみ）
+  // 現在の全データをクラウドへ反映する（ログイン中かつ統合後のみ）。
+  // 統合前の古いデータでクラウドを上書きしないよう、統合が終わるまでは書かない。
+  // その間の変更は dataRef に残っているので、統合のあとにまとめて書かれる。
   function pushCloud() {
     const uid = auth.currentUser?.uid;
-    if (!uid) return;
+    if (!uid || mergedUidRef.current !== uid) return;
     writeCloud(uid, dataRef.current).catch((e) => console.error('クラウド保存に失敗:', e));
+  }
+
+  // 一覧の変更を記録する：消えた項目を削除済みにし、統合前なら変更した項目も控える。
+  function trackList<T extends { id: string }>(kind: ListKind, next: T[]) {
+    const prev = dataRef.current[kind] as unknown as T[];
+    recordDeletions(kind, prev.map((x) => x.id), next.map((x) => x.id));
+    if (mergedUidRef.current) return;
+    const prevById = new Map(prev.map((x) => [x.id, x]));
+    for (const x of next) {
+      if (prevById.get(x.id) !== x) unmergedEditsRef.current.add(deletionKey(kind, x.id));
+    }
+  }
+
+  function recordDeletions(kind: DeletionKind, prevIds: string[], nextIds: string[]) {
+    const deletions = noteDeletions(dataRef.current.deletions, kind, prevIds, nextIds, Date.now());
+    if (deletions === dataRef.current.deletions) return;
+    dataRef.current = { ...dataRef.current, deletions };
+    deletionStorage.save(deletions);
+  }
+
+  // 1件だけのデータ（設定・目標・対戦表）の変更を、統合前なら控える
+  function trackSingle(key: 'settings' | 'goal' | 'matchmaker') {
+    if (!mergedUidRef.current) unmergedEditsRef.current.add(key);
   }
 
   // 認証状態の監視。リダイレクト方式でログインした場合の結果もここで拾われる。
@@ -242,44 +316,69 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // ログインしたら、ローカルとクラウドを統合してリアルタイム購読を開始
+  // ログインしたら、ローカルとクラウドを統合してリアルタイム購読を開始。
+  // オフラインの間は書き込みを止め、つながったら統合し直す（古い全データで上書きしないため）。
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    let running = false;
     let unsubscribe: (() => void) | undefined;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
-    (async () => {
+    async function startSync(uid: string) {
+      if (cancelled || running || mergedUidRef.current === uid) return;
+      running = true;
+      clearTimeout(retryTimer);
       setSyncing(true);
-      let merged = false;
       try {
-        const cloud = await readCloud(user.uid);
-        const local = dataRef.current;
-        const resolved = resolveOnLogin(local, cloud, user.uid);
+        const cloud = await readCloud(uid);
         if (cancelled) return;
+        const resolved = resolveOnLogin(dataRef.current, cloud, uid, unmergedEditsRef.current);
         applyData(resolved);
-        await writeCloud(user.uid, resolved); // 統合結果をクラウドへ反映
-        syncMeta.setOwner(user.uid); // このローカルデータの持ち主を記録
+        syncMeta.setOwner(uid); // このローカルデータの持ち主を記録
+        await writeCloud(uid, resolved); // 統合結果をクラウドへ反映
+        if (cancelled) return;
         syncMeta.clearPendingReplace();
-        merged = true;
+        mergedUidRef.current = uid;
+        unmergedEditsRef.current.clear();
+        // 統合結果を書いている間の入力は、ここで追いかけて書く
+        if (dataRef.current !== resolved) pushCloud();
+        // 統合前に購読を始めると、届いたクラウドデータで未同期のローカルデータを
+        // 上書きしてしまう。統合できた時だけ購読する。
+        // 以降はクラウドの変更を購読して反映（他端末の更新がここで届く）
+        unsubscribe = subscribeCloud(uid, (remote) => {
+          // 復元直後（リロード待ち）はクラウドで上書きしない。復元＝置き換えを守る。
+          if (remote && !syncMeta.isPendingReplace()) applyData(remote);
+        });
+        setSyncing(false);
       } catch (e) {
         console.error('初回同期に失敗:', e);
+        if (!cancelled) retryTimer = setTimeout(() => startSync(uid), SYNC_RETRY_MS);
       } finally {
-        if (!cancelled) setSyncing(false);
+        running = false;
       }
-      if (cancelled) return;
-      // 統合前に購読を始めると、届いたクラウドデータで未同期のローカルデータを
-      // 上書きしてしまう。統合できた時だけ購読する。
-      if (!merged) return;
-      // 以降はクラウドの変更を購読して反映（他端末の更新がここで届く）
-      unsubscribe = subscribeCloud(user.uid, (remote) => {
-        // 復元直後（リロード待ち）はクラウドで上書きしない。復元＝置き換えを守る。
-        if (remote && !syncMeta.isPendingReplace()) applyData(remote);
-      });
-    })();
+    }
+
+    function pauseSync() {
+      mergedUidRef.current = null;
+      unsubscribe?.();
+      unsubscribe = undefined;
+      setSyncing(true);
+    }
+    const uid = user.uid;
+    const resumeSync = () => startSync(uid);
+
+    window.addEventListener('offline', pauseSync);
+    window.addEventListener('online', resumeSync);
+    startSync(uid);
 
     return () => {
       cancelled = true;
+      mergedUidRef.current = null;
+      clearTimeout(retryTimer);
       unsubscribe?.();
+      window.removeEventListener('offline', pauseSync);
+      window.removeEventListener('online', resumeSync);
     };
   }, [user]);
 
@@ -288,6 +387,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // 1つのハンドラで setter を複数回呼んでも取りこぼさない）。
   const setRackets = (updater: Updater<Racket[]>) => {
     const next = updater(dataRef.current.rackets);
+    trackList('rackets', next);
     dataRef.current = { ...dataRef.current, rackets: next };
     setRacketsState(next);
     racketStorage.save(next);
@@ -295,6 +395,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setShoes = (updater: Updater<Shoe[]>) => {
     const next = updater(dataRef.current.shoes);
+    trackList('shoes', next);
     dataRef.current = { ...dataRef.current, shoes: next };
     setShoesState(next);
     shoeStorage.save(next);
@@ -302,6 +403,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setMatches = (updater: Updater<MatchRecord[]>) => {
     const next = updater(dataRef.current.matches);
+    trackList('matches', next);
     dataRef.current = { ...dataRef.current, matches: next };
     setMatchesState(next);
     matchStorage.save(next);
@@ -309,6 +411,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setWishlist = (updater: Updater<WishItem[]>) => {
     const next = updater(dataRef.current.wishlist);
+    trackList('wishlist', next);
     dataRef.current = { ...dataRef.current, wishlist: next };
     setWishlistState(next);
     wishlistStorage.save(next);
@@ -316,6 +419,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setPacking = (updater: Updater<PackingItem[]>) => {
     const next = updater(dataRef.current.packing);
+    trackList('packing', next);
     dataRef.current = { ...dataRef.current, packing: next };
     setPackingState(next);
     packingStorage.save(next);
@@ -323,6 +427,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setPackingLists = (updater: Updater<PackingList[]>) => {
     const next = updater(dataRef.current.packingLists);
+    trackList('packingLists', next);
     dataRef.current = { ...dataRef.current, packingLists: next };
     setPackingListsState(next);
     packingListStorage.save(next);
@@ -330,6 +435,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setGoal = (updater: Updater<Goal>) => {
     const next = updater(dataRef.current.goal);
+    trackSingle('goal');
     dataRef.current = { ...dataRef.current, goal: next };
     setGoalState(next);
     goalStorage.save(next);
@@ -337,6 +443,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setGoalTasks = (updater: Updater<GoalTask[]>) => {
     const next = updater(dataRef.current.goalTasks);
+    trackList('goalTasks', next);
     dataRef.current = { ...dataRef.current, goalTasks: next };
     setGoalTasksState(next);
     goalTaskStorage.save(next);
@@ -344,6 +451,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setMonthlyReviews = (updater: Updater<MonthlyReview[]>) => {
     const next = updater(dataRef.current.monthlyReviews);
+    trackList('monthlyReviews', next);
     dataRef.current = { ...dataRef.current, monthlyReviews: next };
     setMonthlyReviewsState(next);
     monthlyReviewStorage.save(next);
@@ -351,6 +459,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setStringingRecords = (updater: Updater<StringingRecord[]>) => {
     const next = updater(dataRef.current.stringingRecords);
+    trackList('stringingRecords', next);
     dataRef.current = { ...dataRef.current, stringingRecords: next };
     setStringingState(next);
     stringingStorage.save(next);
@@ -358,6 +467,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setPracticeSessions = (updater: Updater<PracticeSession[]>) => {
     const next = updater(dataRef.current.practiceSessions);
+    trackList('practiceSessions', next);
     dataRef.current = { ...dataRef.current, practiceSessions: next };
     setPracticeState(next);
     practiceStorage.save(next);
@@ -365,6 +475,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setSettings = (updater: Updater<RestringSettings>) => {
     const next = updater(dataRef.current.settings);
+    trackSingle('settings');
     dataRef.current = { ...dataRef.current, settings: next };
     setSettingsState(next);
     settingsStorage.save(next);
@@ -372,6 +483,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const setRoster = (updater: Updater<RosterPlayer[]>) => {
     const next = updater(dataRef.current.roster);
+    trackList('roster', next);
     dataRef.current = { ...dataRef.current, roster: next };
     setRosterState(next);
     rosterStorage.save(next);
@@ -380,6 +492,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setMatchmaker = (updater: Updater<SavedSchedule | null>) => {
     const next = updater(dataRef.current.matchmaker);
+    trackSingle('matchmaker');
+    recordDeletions('matchmaker', matchmakerIds(dataRef.current.matchmaker), matchmakerIds(next));
     dataRef.current = { ...dataRef.current, matchmaker: next };
     setMatchmakerState(next);
     matchmakerStorage.save(next);

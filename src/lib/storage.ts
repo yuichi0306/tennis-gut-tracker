@@ -1,10 +1,11 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview, Deletion } from '../types';
 import { resolveSettings } from './settings';
 import { normalizeRacket } from './racket';
 import { normalizeShoe } from './shoe';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
 import { migratePacking } from './packing';
 import { resolveGoal } from './goal';
+import { normalizeDeletions } from './deletions';
 
 const KEYS = {
   rackets: 'tennis-tracker:rackets',
@@ -23,6 +24,8 @@ const KEYS = {
   matchmaker: 'tennis-tracker:matchmaker', // 生成した対戦表（クリアするまで残す）
   owner: 'tennis-tracker:owner', // このブラウザのローカルデータの持ち主(uid)
   pendingReplace: 'tennis-tracker:pending-replace', // 復元直後、クラウドを置き換えるフラグ
+  deletions: 'tennis-tracker:deletions', // 削除済みの記録（別端末からの復活を防ぐ）
+  restoredAt: 'tennis-tracker:restored-at', // 最後にバックアップで置き換えた時刻(ms)
 } as const;
 
 function load<T>(key: string): T[] {
@@ -145,6 +148,11 @@ export const settingsStorage = {
   save: (settings: RestringSettings) => localStorage.setItem(KEYS.settings, JSON.stringify(settings)),
 };
 
+export const deletionStorage = {
+  getAll: (): Deletion[] => normalizeDeletions(load<Deletion>(KEYS.deletions)),
+  save: (items: Deletion[]) => save(KEYS.deletions, items),
+};
+
 // 同期用のメタ情報（ローカルデータの持ち主・復元フラグ）
 export const syncMeta = {
   getOwner: (): string | null => localStorage.getItem(KEYS.owner),
@@ -152,4 +160,6 @@ export const syncMeta = {
   isPendingReplace: (): boolean => localStorage.getItem(KEYS.pendingReplace) === '1',
   setPendingReplace: () => localStorage.setItem(KEYS.pendingReplace, '1'),
   clearPendingReplace: () => localStorage.removeItem(KEYS.pendingReplace),
+  getRestoredAt: (): number => Number(localStorage.getItem(KEYS.restoredAt)) || 0,
+  setRestoredAt: (at: number) => localStorage.setItem(KEYS.restoredAt, String(at)),
 };
