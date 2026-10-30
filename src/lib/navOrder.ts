@@ -10,6 +10,7 @@ export interface NavItem {
 // 既定の並び順。マニュアル(/manual)はタブに出さず、ヘッダー右上の「使い方」から開く。
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'ダッシュボード', end: true },
+  { to: '/goal', label: '目標' },
   { to: '/rackets', label: 'ラケット' },
   { to: '/shoes', label: 'シューズ' },
   { to: '/stringing', label: 'ガット張り替え' },
