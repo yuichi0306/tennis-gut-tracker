@@ -80,6 +80,18 @@ export function usePacking() {
     setPacking((prev) => prev.filter((p) => p.id !== id));
   }
 
+  // 渡した id の品だけを、その順番に並べ直す（ほかの品の位置は変えない）。
+  // カテゴリ内のドラッグ並び替えで使う。並び順は配列の順番そのものとして保存される。
+  function reorderItems(orderedIds: string[]) {
+    setPacking((prev) => {
+      const byId = new Map(prev.map((p) => [p.id, p]));
+      const queue = orderedIds.map((id) => byId.get(id)).filter((p): p is PackingItem => p !== undefined);
+      const targets = new Set(queue.map((p) => p.id));
+      let i = 0;
+      return prev.map((p) => (targets.has(p.id) ? queue[i++] : p));
+    });
+  }
+
   // そのリストのチェックをすべて外す（次の合宿・試合で使い回す）
   function resetChecks(listId: string) {
     setPacking((prev) => prev.map((p) => (p.listId === listId && p.packed ? { ...p, packed: false } : p)));
@@ -101,6 +113,7 @@ export function usePacking() {
     addMany,
     updateItem,
     deleteItem,
+    reorderItems,
     resetChecks,
     clearItems,
   };
