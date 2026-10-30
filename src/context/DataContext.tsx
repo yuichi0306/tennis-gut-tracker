@@ -9,10 +9,11 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { readCloud, writeCloud, subscribeCloud, type CloudData } from '../lib/cloud';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from '../lib/storage';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, goalStorage, goalTaskStorage, monthlyReviewStorage, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from '../lib/storage';
 import type { SavedSchedule } from '../lib/matchmaker';
 import { DEFAULT_SETTINGS } from '../lib/settings';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
+import { DEFAULT_GOAL } from '../lib/goal';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview } from '../types';
 
 type LocalData = Omit<CloudData, 'updatedAt'>;
 type Updater<T> = (prev: T) => T;
@@ -27,6 +28,9 @@ interface DataContextValue {
   wishlist: WishItem[];
   packing: PackingItem[];
   packingLists: PackingList[];
+  goal: Goal;
+  goalTasks: GoalTask[];
+  monthlyReviews: MonthlyReview[];
   settings: RestringSettings;
   roster: RosterPlayer[];
   matchmaker: SavedSchedule | null; // 生成した対戦表（クリアするまで残る）
@@ -38,6 +42,9 @@ interface DataContextValue {
   setWishlist: (updater: Updater<WishItem[]>) => void;
   setPacking: (updater: Updater<PackingItem[]>) => void;
   setPackingLists: (updater: Updater<PackingList[]>) => void;
+  setGoal: (updater: Updater<Goal>) => void;
+  setGoalTasks: (updater: Updater<GoalTask[]>) => void;
+  setMonthlyReviews: (updater: Updater<MonthlyReview[]>) => void;
   setSettings: (updater: Updater<RestringSettings>) => void;
   setRoster: (updater: Updater<RosterPlayer[]>) => void;
   setMatchmaker: (updater: Updater<SavedSchedule | null>) => void;
@@ -71,8 +78,11 @@ function mergeLocalAndCloud(local: LocalData, cloud: LocalData): LocalData {
     packing: mergeById(local.packing, cloud.packing),
     packingLists: mergeById(local.packingLists, cloud.packingLists),
     roster: mergeById(local.roster, cloud.roster),
-    // 設定はクラウド側を優先（無ければローカル）
+    goalTasks: mergeById(local.goalTasks, cloud.goalTasks),
+    monthlyReviews: mergeById(local.monthlyReviews, cloud.monthlyReviews),
+    // 設定・目標は1件なので結合できない。クラウド側を優先（無ければローカル）
     settings: cloud.settings ?? local.settings,
+    goal: cloud.goal ?? local.goal,
     // 対戦表は1件だけなので結合できない。クラウド側を優先（無ければローカル）
     matchmaker: cloud.matchmaker ?? local.matchmaker,
   };
@@ -87,6 +97,9 @@ const EMPTY_DATA: LocalData = {
   wishlist: [],
   packing: [],
   packingLists: [],
+  goal: DEFAULT_GOAL,
+  goalTasks: [],
+  monthlyReviews: [],
   settings: DEFAULT_SETTINGS,
   roster: [],
   matchmaker: null,
@@ -112,6 +125,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlistState] = useState<WishItem[]>([]);
   const [packing, setPackingState] = useState<PackingItem[]>([]);
   const [packingLists, setPackingListsState] = useState<PackingList[]>([]);
+  const [goal, setGoalState] = useState<Goal>(DEFAULT_GOAL);
+  const [goalTasks, setGoalTasksState] = useState<GoalTask[]>([]);
+  const [monthlyReviews, setMonthlyReviewsState] = useState<MonthlyReview[]>([]);
   const [stringingRecords, setStringingState] = useState<StringingRecord[]>([]);
   const [practiceSessions, setPracticeState] = useState<PracticeSession[]>([]);
   const [settings, setSettingsState] = useState<RestringSettings>(DEFAULT_SETTINGS);
@@ -132,6 +148,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     wishlist: [],
     packing: [],
     packingLists: [],
+    goal: DEFAULT_GOAL,
+    goalTasks: [],
+    monthlyReviews: [],
     settings: DEFAULT_SETTINGS,
     roster: [],
     matchmaker: null,
@@ -150,6 +169,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       wishlist: wishlistStorage.getAll(),
       packing: localPacking.items,
       packingLists: localPacking.lists,
+      goal: goalStorage.get(),
+      goalTasks: goalTaskStorage.getAll(),
+      monthlyReviews: monthlyReviewStorage.getAll(),
       settings: settingsStorage.get(),
       roster: rosterStorage.getAll(),
       matchmaker: matchmakerStorage.get(),
@@ -163,6 +185,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setWishlistState(local.wishlist);
     setPackingState(local.packing);
     setPackingListsState(local.packingLists);
+    setGoalState(local.goal);
+    setGoalTasksState(local.goalTasks);
+    setMonthlyReviewsState(local.monthlyReviews);
     setSettingsState(local.settings);
     setRosterState(local.roster);
     setMatchmakerState(local.matchmaker);
@@ -179,6 +204,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setWishlistState(d.wishlist);
     setPackingState(d.packing);
     setPackingListsState(d.packingLists);
+    setGoalState(d.goal);
+    setGoalTasksState(d.goalTasks);
+    setMonthlyReviewsState(d.monthlyReviews);
     setSettingsState(d.settings);
     setRosterState(d.roster);
     setMatchmakerState(d.matchmaker);
@@ -190,6 +218,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     wishlistStorage.save(d.wishlist);
     packingStorage.save(d.packing);
     packingListStorage.save(d.packingLists);
+    goalStorage.save(d.goal);
+    goalTaskStorage.save(d.goalTasks);
+    monthlyReviewStorage.save(d.monthlyReviews);
     settingsStorage.save(d.settings);
     rosterStorage.save(d.roster);
     matchmakerStorage.save(d.matchmaker);
@@ -297,6 +328,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
     packingListStorage.save(next);
     pushCloud();
   };
+  const setGoal = (updater: Updater<Goal>) => {
+    const next = updater(dataRef.current.goal);
+    dataRef.current = { ...dataRef.current, goal: next };
+    setGoalState(next);
+    goalStorage.save(next);
+    pushCloud();
+  };
+  const setGoalTasks = (updater: Updater<GoalTask[]>) => {
+    const next = updater(dataRef.current.goalTasks);
+    dataRef.current = { ...dataRef.current, goalTasks: next };
+    setGoalTasksState(next);
+    goalTaskStorage.save(next);
+    pushCloud();
+  };
+  const setMonthlyReviews = (updater: Updater<MonthlyReview[]>) => {
+    const next = updater(dataRef.current.monthlyReviews);
+    dataRef.current = { ...dataRef.current, monthlyReviews: next };
+    setMonthlyReviewsState(next);
+    monthlyReviewStorage.save(next);
+    pushCloud();
+  };
   const setStringingRecords = (updater: Updater<StringingRecord[]>) => {
     const next = updater(dataRef.current.stringingRecords);
     dataRef.current = { ...dataRef.current, stringingRecords: next };
@@ -362,6 +414,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         wishlist,
         packing,
         packingLists,
+        goal,
+        goalTasks,
+        monthlyReviews,
         settings,
         roster,
         matchmaker,
@@ -371,6 +426,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setWishlist,
         setPacking,
         setPackingLists,
+        setGoal,
+        setGoalTasks,
+        setMonthlyReviews,
         setStringingRecords,
         setPracticeSessions,
         setSettings,

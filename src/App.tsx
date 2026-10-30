@@ -3,6 +3,7 @@ import { Link, Route, Routes } from 'react-router-dom';
 import { useRestringSummary } from './hooks/useRestringSummary';
 import { setAppBadge, notifyRestring, notifyPermission } from './lib/notify';
 import DashboardPage from './pages/DashboardPage';
+import GoalPage from './pages/GoalPage';
 import RacketsPage from './pages/RacketsPage';
 import RacketDetailPage from './pages/RacketDetailPage';
 import ShoesPage from './pages/ShoesPage';
@@ -67,6 +68,7 @@ function App() {
       <main className="mx-auto max-w-4xl px-4 py-8">
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/goal" element={<GoalPage />} />
           <Route path="/rackets" element={<RacketsPage />} />
           <Route path="/racket/:id" element={<RacketDetailPage />} />
           <Route path="/shoes" element={<ShoesPage />} />

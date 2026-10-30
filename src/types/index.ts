@@ -136,3 +136,40 @@ export interface PackingItem {
   quantity: number; // 個数（1以上）
   packed: boolean; // 準備できたチェック
 }
+
+// ---- 目標管理 ----
+
+// 目標と現在地。1件だけ持つ（設定と同じ扱い）。
+// 進級条件は未確認のことがあるので、空文字のままでも成り立つ。
+export interface Goal {
+  bigGoal: string; // 大目標（例: 上のクラスに進級する）
+  currentClass: string; // 現在のクラス（例: 中級）
+  pace: string; // 練習ペース（例: 週1回・1回90分）
+  requirements: string; // 進級条件（未確認は ''）
+  updatedAt: string; // ISO datetime
+}
+
+// 課題の状態
+export type GoalTaskStatus = '未着手' | '練習中' | 'できてきた' | '完了';
+
+// 課題リストの1件
+export interface GoalTask {
+  id: string;
+  title: string; // 課題（必須）
+  noticedDate: string; // 気づいた日（ISO date）
+  status: GoalTaskStatus;
+  notes: string;
+  createdAt: string; // ISO datetime（同じ日の並び順の安定用）
+}
+
+// 月ごとの振り返りの1件
+export interface MonthlyReview {
+  id: string;
+  month: string; // 年月（YYYY-MM）
+  lessonCount: number; // レッスン回数
+  lessonCountEdited: boolean; // 手で直したか。true なら練習記録の件数で上書きしない
+  theme: string; // その月のテーマ
+  achieved: string; // できるようになったこと
+  carryOver: string; // 次に持ち越すこと
+  createdAt: string; // ISO datetime
+}

@@ -1,11 +1,12 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
-import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from './storage';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview } from '../types';
+import { racketStorage, shoeStorage, stringingStorage, practiceStorage, matchStorage, wishlistStorage, packingStorage, packingListStorage, loadPacking, goalStorage, goalTaskStorage, monthlyReviewStorage, settingsStorage, rosterStorage, matchmakerStorage, syncMeta } from './storage';
 import { resolveSettings } from './settings';
 import { recordCost } from './cost';
 import { tensionFeelLabel } from './tensionFeel';
 import { formatScore, formatLabel, resultLabel, matchResult } from './match';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
 import { migratePacking } from './packing';
+import { resolveGoal } from './goal';
 
 export interface BackupData {
   app: 'tennis-gut-tracker';
@@ -21,6 +22,9 @@ export interface BackupData {
   wishlist?: WishItem[]; // 欲しいもの対応より前のバックアップには含まれない
   packing?: PackingItem[]; // 持ち物対応より前のバックアップには含まれない
   packingLists?: PackingList[]; // 複数リスト対応より前のバックアップには含まれない（復元時に「合宿」へ移行）
+  goal?: Goal; // 目標管理より前のバックアップには含まれない
+  goalTasks?: GoalTask[];
+  monthlyReviews?: MonthlyReview[];
   matchmaker?: SavedSchedule | null; // 生成した対戦表。対戦表の保存より前のバックアップには含まれない
 }
 
@@ -41,6 +45,9 @@ export function buildBackup(): BackupData {
     wishlist: wishlistStorage.getAll(),
     packing: packing.items,
     packingLists: packing.lists,
+    goal: goalStorage.get(),
+    goalTasks: goalTaskStorage.getAll(),
+    monthlyReviews: monthlyReviewStorage.getAll(),
     matchmaker: matchmakerStorage.get(),
   };
 }
@@ -194,6 +201,10 @@ export function importBackup(jsonText: string): ImportResult {
   wishlistStorage.save(wishlist);
   packingStorage.save(packing.items);
   packingListStorage.save(packing.lists);
+  goalTaskStorage.save(asRecordArray<GoalTask>(obj.goalTasks));
+  monthlyReviewStorage.save(asRecordArray<MonthlyReview>(obj.monthlyReviews));
+  // 目標は1件。含まれていなければ既定値で始める（対応前のバックアップ対策）
+  goalStorage.save(resolveGoal(obj.goal));
   matchmakerStorage.save(matchmaker);
 
   // 設定は任意項目。含まれていれば正規化して取り込む（不正値は既定値で補完）

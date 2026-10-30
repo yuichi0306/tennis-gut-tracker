@@ -5,7 +5,8 @@ import { normalizeRacket } from './racket';
 import { normalizeShoe } from './shoe';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
 import { migratePacking } from './packing';
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
+import { resolveGoal } from './goal';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview } from '../types';
 
 // クラウド(Firestore)に保存する1ユーザー分のデータ。
 // users/{uid} の1ドキュメントに全データをまとめて保存する。
@@ -18,6 +19,9 @@ export interface CloudData {
   wishlist: WishItem[];
   packing: PackingItem[];
   packingLists: PackingList[];
+  goal: Goal;
+  goalTasks: GoalTask[];
+  monthlyReviews: MonthlyReview[];
   settings: RestringSettings;
   roster: RosterPlayer[];
   matchmaker: SavedSchedule | null; // 生成した対戦表（未作成・クリア後は null）
@@ -42,6 +46,9 @@ function normalize(raw: Partial<CloudData> | undefined): Omit<CloudData, 'update
     wishlist: arr<WishItem>(raw?.wishlist),
     packing: packing.items,
     packingLists: packing.lists,
+    goal: resolveGoal(raw?.goal),
+    goalTasks: arr<GoalTask>(raw?.goalTasks),
+    monthlyReviews: arr<MonthlyReview>(raw?.monthlyReviews),
     settings: resolveSettings(raw?.settings),
     roster: arr<RosterPlayer>(raw?.roster),
     matchmaker: normalizeSavedSchedule(raw?.matchmaker),

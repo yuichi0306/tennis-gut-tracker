@@ -1,9 +1,10 @@
-import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList } from '../types';
+import type { Racket, StringingRecord, PracticeSession, RestringSettings, RosterPlayer, Shoe, MatchRecord, WishItem, PackingItem, PackingList, Goal, GoalTask, MonthlyReview } from '../types';
 import { resolveSettings } from './settings';
 import { normalizeRacket } from './racket';
 import { normalizeShoe } from './shoe';
 import { normalizeSavedSchedule, type SavedSchedule } from './matchmaker';
 import { migratePacking } from './packing';
+import { resolveGoal } from './goal';
 
 const KEYS = {
   rackets: 'tennis-tracker:rackets',
@@ -14,6 +15,9 @@ const KEYS = {
   wishlist: 'tennis-tracker:wishlist', // 欲しいものリスト
   packing: 'tennis-tracker:packing', // 持ち物（品物。どのリストのものかは listId で持つ）
   packingLists: 'tennis-tracker:packing-lists', // 持ち物リスト（合宿・試合…）
+  goal: 'tennis-tracker:goal', // 目標と現在地（1件）
+  goalTasks: 'tennis-tracker:goal-tasks', // 課題リスト
+  monthlyReviews: 'tennis-tracker:monthly-reviews', // 月ごとの振り返り
   settings: 'tennis-tracker:settings',
   roster: 'tennis-tracker:roster', // 対戦表の参加者名簿
   matchmaker: 'tennis-tracker:matchmaker', // 生成した対戦表（クリアするまで残す）
@@ -103,6 +107,29 @@ export const matchmakerStorage = {
     if (value) localStorage.setItem(KEYS.matchmaker, JSON.stringify(value));
     else localStorage.removeItem(KEYS.matchmaker);
   },
+};
+
+export const goalStorage = {
+  get: (): Goal => {
+    const raw = localStorage.getItem(KEYS.goal);
+    if (!raw) return resolveGoal(null);
+    try {
+      return resolveGoal(JSON.parse(raw));
+    } catch {
+      return resolveGoal(null);
+    }
+  },
+  save: (goal: Goal) => localStorage.setItem(KEYS.goal, JSON.stringify(goal)),
+};
+
+export const goalTaskStorage = {
+  getAll: (): GoalTask[] => load<GoalTask>(KEYS.goalTasks),
+  save: (items: GoalTask[]) => save(KEYS.goalTasks, items),
+};
+
+export const monthlyReviewStorage = {
+  getAll: (): MonthlyReview[] => load<MonthlyReview>(KEYS.monthlyReviews),
+  save: (items: MonthlyReview[]) => save(KEYS.monthlyReviews, items),
 };
 
 export const settingsStorage = {
