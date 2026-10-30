@@ -4,11 +4,12 @@
 
 - **公開URL**: https://yuichi0306.github.io/tennis-gut-tracker/
 - **リポジトリ**: https://github.com/yuichi0306/tennis-gut-tracker （パブリック）
-- **最終更新**: 2026-10-08
+- **最終更新**: 2026-10-30
 - **参考**: アプリ紹介用に「できることガイド（A4一枚・図解入り・印刷対応）」をClaude Artifactとして作成済み（既定は非公開。リポジトリ外の生成物）。
   URL: https://claude.ai/code/artifact/713f5abb-8c3b-40e5-a3fc-ceec2a1a1a99 （更新するときは、この**URLを `url` に渡して同じ場所を上書き**する。渡さないと別URLの新規ガイドができてしまう）
   **2026-10-08時点で全機能を反映済み**（ラケットの購入日・ラケット/シューズのアーカイブ・対戦表の保存・シューズのタイムライン・
   練習/試合のコート名とサーフェス・持ち物リストの複数化を含む）。機能を足したらここも追記する。
+  ⚠️ **目標管理（目標タブ）はガイド未反映。** 次に更新するときに書き足す。
   A4一枚に収める前提なので、追記したら**用紙からあふれていないか確認する**（1ページ＝297mm。現状は下に約8mmの余白）。
   カードを増やすとあふれるので、**既存カードの本文とタグに書き足す**のが安全。確認は「ローカルの `public/` に一時コピー →
   `http://localhost:5173/<ファイル名>` で開いて `.sheet` の高さと `.foot` の下端を測る → 一時ファイルを消す」でできる。
@@ -22,6 +23,7 @@
 - **テニスシューズも登録**でき、練習・試合で選んだ分だけ使用時間が積み上がり「買い替え時期」を判定する。
 - ラケット・シューズは**アーカイブ**でき、記録を残したまま一覧や入力欄から外せる（削除ではない）。
 - **試合記録**（シングルス／ダブルス・ゲームスコア・勝敗自動判定）を残せる。試合時間はラケット・シューズの使用時間にも加算される。
+- **目標管理**（大目標と現在地・課題リスト・月ごとの振り返り）でレッスンの進み具合を追える。
 - **欲しいものリスト**（テニスグッズ）と**持ち物リスト**（合宿・試合・日帰り練習など用途ごとに複数作れる・定番プリセット・チェック式）も管理できる。
 - データは**ブラウザのlocalStorage**に保存。未ログイン・オフラインでもそのまま動く。
 - **Googleログインすると端末間でリアルタイム同期**（Firebase / Firestore）。スマホとPCで同じデータを見られる。
@@ -82,6 +84,7 @@ src/
     restring.ts            張り替え時期の判定ロジック（練習＋試合の使用時間で判定）
     forecast.ts            ガット寿命の予測（直近のプレーペースから次の張り替え時期を見積もる）
     navOrder.ts            ヘッダーのタブ一覧と並び順（ドラッグで並び替え・localStorageのみ）
+    goal.ts                目標管理の既定値・課題の状態と色・並び順・その月の練習記録の件数
     racket.ts              ラケットの正規化（purchaseDate/archived の補完）・使用中の絞り込み
     shoe.ts                シューズの使用時間集計・買い替え判定・サーフェス一覧（練習＋試合）・正規化/アーカイブ絞り込み
     match.ts               試合の勝敗判定・スコア整形・勝率集計
@@ -100,6 +103,7 @@ src/
     theme.ts               表示テーマ（ライト/ダーク）の解決・保存・適用
     matchmaker.ts          対戦表の自動生成（ダブルス/シングルス・ラウンド生成/追加）＋保存データ SavedSchedule の検証
   hooks/
+    useGoal.ts             目標・課題・月の振り返りのCRUD
     useRackets.ts          ラケットのCRUD（DataContext のthin wrapper）
     useShoes.ts            シューズのCRUD
     useMatches.ts          試合記録のCRUD
@@ -117,6 +121,7 @@ src/
     HistoryFilter.tsx      履歴の絞り込みバー（共通）
   pages/
     DashboardPage.tsx      張り替え時期の状況一覧・要張り替えサマリー・通知オン
+    GoalPage.tsx           目標（目標と現在地・課題リスト・月ごとの振り返り）。ルート /goal
     RacketsPage.tsx        ラケット管理（詳細/タイムラインへのリンク）
     RacketDetailPage.tsx   ラケット詳細（購入日・テンション推移・タイムライン）。ルート /racket/:id
     ShoesPage.tsx          シューズ管理（登録・使用時間・買い替え判定・アーカイブ）。ルート /shoes
@@ -158,6 +163,10 @@ WishItem         { id, name, price, priority, bought, notes, createdAt }  // pri
 WishPriority     'high'（高） | 'mid'（中） | 'low'（低）
 PackingList      { id, name, createdAt }  // 持ち物リストそのもの（合宿・試合…）
 PackingItem      { id, listId, name, category, quantity, packed }  // listId=どのリストの持ち物か、category未設定は ''、quantityは1以上
+Goal             { bigGoal, currentClass, pace, requirements, updatedAt }  // 1件だけ。requirements（進級条件）は未確認なら ''
+GoalTaskStatus   '未着手' | '練習中' | 'できてきた' | '完了'
+GoalTask         { id, title, noticedDate, status, notes, createdAt }  // noticedDate=気づいた日
+MonthlyReview    { id, month, lessonCount, lessonCountEdited, theme, achieved, carryOver, createdAt }  // month='YYYY-MM'、lessonCountEdited=手で直したか
 RestringSettings { thresholds: Record<GutType, { hours, days }>, shoeHours }
 SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。names=生成時点の名前の控え。無いときは null（lib/matchmaker.ts）
 ```
@@ -171,6 +180,9 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 - `tennis-tracker:wishlist`（欲しいものリスト）
 - `tennis-tracker:packing`（持ち物の品物。どのリストかは `listId` で持つ）
 - `tennis-tracker:packing-lists`（持ち物リストそのもの）
+- `tennis-tracker:goal`（目標と現在地。1件）
+- `tennis-tracker:goal-tasks`（課題リスト）
+- `tennis-tracker:monthly-reviews`（月ごとの振り返り）
 - `tennis-tracker:settings`
 - `tennis-tracker:owner`（ローカルデータの持ち主uid：同期用）
 - `tennis-tracker:pending-replace`（復元直後にクラウドを置き換えるフラグ）
@@ -407,6 +419,24 @@ SavedSchedule    { schedule, names, createdAt }  // 生成した対戦表。name
 
 ---
 
+## 6.19 目標管理（目標タブ）
+
+- 「目標」タブ（ルート `/goal`）。**大目標と現在地／課題リスト／月ごとの振り返り**の3つを1画面にまとめている。タブの既定位置はダッシュボードの次。
+- 実装：`src/lib/goal.ts`（既定値・状態・並び順）／`src/hooks/useGoal.ts`／`src/pages/GoalPage.tsx`。
+- **目標と現在地**（`Goal`）は設定と同じく**1件だけ**持つ。同期では結合できないのでクラウド優先。
+  初期値は `DEFAULT_GOAL`（大目標=上のクラスに進級する／現在のクラス=中級／ペース=週1回・1回90分／進級条件は空）。全項目あとから編集可。
+- **課題リスト**（`GoalTask`）：状態は `GOAL_TASK_STATUSES`（未着手・練習中・できてきた・完了）。
+  並びは **`openTasks`＝完了以外を気づいた日の古い順**（放置した課題が上に来る）、**`doneTasks`＝完了を新しい順**。完了分はたたんで表示。
+  状態は一覧のプルダウンから直接変えられる（よく変わる項目なので、編集画面を開かずに済ませる）。
+- **月ごとの振り返り**（`MonthlyReview`）：`month` は `YYYY-MM`。新しい月が上。
+  - **レッスン回数は `practiceCountOfMonth()`（その月の練習記録の件数）を初期値**にし、手で直すと `lessonCountEdited: true` になって以降は自動で上書きしない。
+    練習記録にはレッスン以外の自主練も混ざるため、ずれたら直せるようにしてある。画面には常に「練習記録では◯回」を出す。
+  - ⚠️ **初期値を `useState` で決めると0になる**（起動直後は `DataContext` の読み込みが終わっていない）。件数が確定してから `useEffect` で合わせている。ここは触るとき注意。
+  - 同じ月の振り返りが既にある場合、追加前に画面で知らせる（重複自体は禁止していない）。
+- 同期・バックアップ対象（`CloudData` / `BackupData` の `goal` / `goalTasks` / `monthlyReviews`）。目標管理より前のバックアップを復元しても、既定値で始まる。
+
+---
+
 ## 7. デプロイ（GitHub Pages）
 
 - `main` ブランチへ push すると `.github/workflows/deploy.yml` が走り、自動でビルド＆公開。
@@ -447,4 +477,4 @@ git push origin main          # → 自動でビルド・デプロイ
 - 試合の勝率・傾向を統計ページに統合（相手別・サーフェス別・月別勝率など。現状は「試合」タブ内の集計のみ）
 - 複数ユーザーでの共有（コーチと共有など。現状は1ユーザー＝自分の複数端末を想定）
 
-> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え / ラケットの購入日 / ラケット・シューズのアーカイブ / 対戦表の保存 / シューズのタイムライン / コート名・サーフェス / 持ち物リストの複数化
+> 実装済み（6章参照）: 端末間同期 / 張り替え通知 / 打感★評価 / 記録の絞り込み / コスト管理 / ラケット別タイムライン・テンション推移 / 入力候補（サジェスト） / 今月サマリー・ガット比較 / CSVエクスポート / デザインシステム・ダークモード / 使い方マニュアル / 対戦表の自動生成 / シューズ管理 / 試合記録 / 欲しいものリスト / 合宿持ち物リスト / ガット寿命の予測 / タブの並び替え / ラケットの購入日 / ラケット・シューズのアーカイブ / 対戦表の保存 / シューズのタイムライン / コート名・サーフェス / 持ち物リストの複数化 / 目標管理
